@@ -35,6 +35,13 @@
     <h1 class="mb-4">Financial Tracker</h1>
     <form id="dow-form" class="row g-3 align-items-end mb-4 no-print">
       <div class="col-auto">
+        <button type="button" class="btn btn-outline-secondary" id="add-series-btn">+ New Series</button>
+      </div>
+      <div class="col-auto">
+        <label for="series" class="form-label">Series Name</label>
+        <select id="series" class="form-select"></select>
+      </div>
+      <div class="col-auto">
         <label for="date" class="form-label">Date</label>
         <input type="date" id="date" class="form-control" required>
       </div>
@@ -69,157 +76,238 @@
   </div>
 
   <script>
-    // Utilities for localStorage
-    const STORAGE_KEY = 'dow_values';
+    // --- Series Management ---
+const SERIES_LIST_KEY = 'series_list';
+const DOW_SERIES = 'Dow Jones';
 
-    function getValues() {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    }
+// Get all series names
+function getSeriesList() {
+  return JSON.parse(localStorage.getItem(SERIES_LIST_KEY) || `["${DOW_SERIES}"]`);
+}
 
-    function saveValues(values) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
-    }
+// Save all series names
+function saveSeriesList(list) {
+  localStorage.setItem(SERIES_LIST_KEY, JSON.stringify(list));
+}
 
-    // Render table and chart
-    async function render() {
-      const values = getValues().sort((a, b) => a.date.localeCompare(b.date));
-      // Table
-      const table = document.getElementById('values-table');
-      table.innerHTML = values.map(v =>
-        `<tr><td>${v.date}</td><td>${Number(v.value).toLocaleString()}</td></tr>`
-      ).join('');
-      // Chart
-      const ctx = document.getElementById('dowChart').getContext('2d');
-      if (window.dowChart) {
-        try {
-          await window.dowChart.destroy();
-        } catch (e) {}
+// Get values for a series
+function getSeriesValues(series) {
+  if (series === DOW_SERIES) return getValues();
+  return JSON.parse(localStorage.getItem('series_' + series) || '[]');
+}
+
+// Save values for a series
+function saveSeriesValues(series, values) {
+  if (series === DOW_SERIES) return saveValues(values);
+  localStorage.setItem('series_' + series, JSON.stringify(values));
+}
+
+// Populate series dropdown
+function populateSeriesDropdown(selected) {
+  const list = getSeriesList();
+  const sel = document.getElementById('series');
+  sel.innerHTML = '';
+  list.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
+  sel.value = selected || list[0];
+}
+
+// Add new series
+document.getElementById('add-series-btn').addEventListener('click', () => {
+  let name = prompt('Enter a name for the new series:');
+  if (!name) return;
+  name = name.trim();
+  if (!name) return;
+  const list = getSeriesList();
+  if (list.includes(name)) {
+    alert('A series with this name already exists.');
+    return;
+  }
+  list.push(name);
+  saveSeriesList(list);
+  saveSeriesValues(name, []);
+  populateSeriesDropdown(name);
+  render();
+});
+
+// Disable form controls if Dow is selected
+function updateFormState() {
+  const isDow = document.getElementById('series').value === DOW_SERIES;
+  document.getElementById('date').disabled = isDow;
+  document.getElementById('value').disabled = isDow;
+  document.querySelector('button[type="submit"]').disabled = isDow;
+}
+
+// Call after populating dropdown and on change
+populateSeriesDropdown();
+updateFormState();
+
+// Update dropdown on load
+populateSeriesDropdown();
+
+// Update table/chart when series changes
+document.getElementById('series').addEventListener('change', () => {
+  render();
+  updateFormState();
+});
+
+// Utilities for localStorage
+const STORAGE_KEY = 'dow_values';
+
+function getValues() {
+  return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+}
+
+function saveValues(values) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
+}
+
+// Render table and chart
+async function render() {
+  const series = document.getElementById('series').value;
+  const values = getSeriesValues(series).sort((a, b) => a.date.localeCompare(b.date));
+  // Table
+  const table = document.getElementById('values-table');
+  table.innerHTML = values.map(v =>
+    `<tr><td>${v.date}</td><td>${Number(v.value).toLocaleString()}</td></tr>`
+  ).join('');
+  // Chart
+  const ctx = document.getElementById('dowChart').getContext('2d');
+  if (window.dowChart) {
+    try {
+      await window.dowChart.destroy();
+    } catch (e) {}
+  }
+  window.dowChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: values.map(v => v.date),
+      datasets: [{
+        label: 'Dow Close',
+        data: values.map(v => v.value),
+        borderColor: 'rgba(13,110,253,1)',
+        backgroundColor: 'rgba(13,110,253,0.1)',
+        fill: true,
+        tension: 0.2
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: true }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Date' } },
+        y: { title: { display: true, text: 'Dow Close' } }
       }
-      window.dowChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: values.map(v => v.date),
-          datasets: [{
-            label: 'Dow Close',
-            data: values.map(v => v.value),
-            borderColor: 'rgba(13,110,253,1)',
-            backgroundColor: 'rgba(13,110,253,0.1)',
-            fill: true,
-            tension: 0.2
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: true }
-          },
-          scales: {
-            x: { title: { display: true, text: 'Date' } },
-            y: { title: { display: true, text: 'Dow Close' } }
-          }
-        }
-      });
     }
+  });
+}
 
-    // Show/hide spinner
-    function showSpinner(show) {
-      document.getElementById('spinner').classList.toggle('hidden', !show);
-    }
+// Show/hide spinner
+function showSpinner(show) {
+  document.getElementById('spinner').classList.toggle('hidden', !show);
+}
 
-    // Helper to format date as YYYY-MM-DD
-    function formatDate(d) {
-      return d.toISOString().slice(0, 10);
-    }
+// Helper to format date as YYYY-MM-DD
+function formatDate(d) {
+  return d.toISOString().slice(0, 10);
+}
 
-    const FMP_API_KEY = 'ksnyJJle3CIgsIeWqvDsDbRPYM0wb96V';
+const FMP_API_KEY = 'ksnyJJle3CIgsIeWqvDsDbRPYM0wb96V';
 
-    // Fetch Dow data for a date range using Twelve Data API
-    async function fetchDowRange(fromDate, toDate) {
-      const url = `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=^DJI&apikey=${FMP_API_KEY}`;
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        if (!Array.isArray(data)) throw new Error('No data');
-        // Filter by date range and map to {date, value}
-        return data
-          .filter(d => d.date >= fromDate && d.date <= toDate)
-          .map(d => ({
-            date: d.date,
-            value: d.close
-          }))
-          .sort((a, b) => a.date.localeCompare(b.date));
-      } catch (e) {
-        console.log('No Dow data retrieved for range:', fromDate, 'to', toDate, e);
-        return [];
-      }
-    }
+// Fetch Dow data for a date range using Twelve Data API
+async function fetchDowRange(fromDate, toDate) {
+  const url = `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=^DJI&apikey=${FMP_API_KEY}`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!Array.isArray(data)) throw new Error('No data');
+    // Filter by date range and map to {date, value}
+    return data
+      .filter(d => d.date >= fromDate && d.date <= toDate)
+      .map(d => ({
+        date: d.date,
+        value: d.close
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  } catch (e) {
+    console.log('No Dow data retrieved for range:', fromDate, 'to', toDate, e);
+    return [];
+  }
+}
 
-    // Fetch all Dow data from FMP and filter by missing dates
-    async function fetchDowMissing(existingDatesSet) {
-      const url = `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=^DJI&apikey=${FMP_API_KEY}`;
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        if (!Array.isArray(data)) throw new Error('No data');
-        // Only return entries not already in local data
-        return data
-          .filter(d => !existingDatesSet.has(d.date))
-          .map(d => ({
-            date: d.date,
-            value: d.close
-          }));
-      } catch (e) {
-        console.log('No Dow data retrieved:', e);
-        return [];
-      }
-    }
+// Fetch all Dow data from FMP and filter by missing dates
+async function fetchDowMissing(existingDatesSet) {
+  const url = `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=^DJI&apikey=${FMP_API_KEY}`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!Array.isArray(data)) throw new Error('No data');
+    // Only return entries not already in local data
+    return data
+      .filter(d => !existingDatesSet.has(d.date))
+      .map(d => ({
+        date: d.date,
+        value: d.close
+      }));
+  } catch (e) {
+    console.log('No Dow data retrieved:', e);
+    return [];
+  }
+}
 
-    // On page load: fetch if not already in localStorage, or update with missing days
-    async function init() {
-      showSpinner(true);
-      let values = getValues();
+// On page load: fetch if not already in localStorage, or update with missing days
+async function init() {
+  showSpinner(true);
+  let values = getValues();
 
-      // Build a set of existing dates for quick lookup
-      const existingDates = new Set(values.map(v => v.date));
+  // Build a set of existing dates for quick lookup
+  const existingDates = new Set(values.map(v => v.date));
 
-      const missing = await fetchDowMissing(existingDates);
+  const missing = await fetchDowMissing(existingDates);
 
-      if (!values.length && missing.length) {
-        // Only keep last year if this is the initial load
-        const oneYearAgo = new Date();
-        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-        const oneYearAgoStr = oneYearAgo.toISOString().slice(0, 10);
-        values = missing.filter(v => v.date >= oneYearAgoStr);
-        values.sort((a, b) => a.date.localeCompare(b.date));
-        saveValues(values);
-      } else if (missing.length) {
-        // On later loads, keep all history
-        values = values.concat(missing);
-        values.sort((a, b) => a.date.localeCompare(b.date));
-        saveValues(values);
-      }
+  if (!values.length && missing.length) {
+    // Only keep last year if this is the initial load
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const oneYearAgoStr = oneYearAgo.toISOString().slice(0, 10);
+    values = missing.filter(v => v.date >= oneYearAgoStr);
+    values.sort((a, b) => a.date.localeCompare(b.date));
+    saveValues(values);
+  } else if (missing.length) {
+    // On later loads, keep all history
+    values = values.concat(missing);
+    values.sort((a, b) => a.date.localeCompare(b.date));
+    saveValues(values);
+  }
 
-      await render();
-      showSpinner(false);
-    }
+  await render();
+  showSpinner(false);
+}
 
-    // Form handler
-    document.getElementById('dow-form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const date = document.getElementById('date').value;
-      const value = parseFloat(document.getElementById('value').value);
-      if (!date || isNaN(value)) return;
-      let values = getValues();
-      // Remove existing entry for this date
-      values = values.filter(v => v.date !== date);
-      values.push({ date, value });
-      saveValues(values);
-      render();
-      this.reset();
-    });
+// Form handler
+document.getElementById('dow-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const series = document.getElementById('series').value;
+  const date = document.getElementById('date').value;
+  const value = parseFloat(document.getElementById('value').value);
+  if (!date || isNaN(value)) return;
+  let values = getSeriesValues(series);
+  // Remove existing entry for this date
+  values = values.filter(v => v.date !== date);
+  values.push({ date, value });
+  saveSeriesValues(series, values);
+  render();
+  this.reset();
+});
 
-    // Initial load
-    init();
+// Initial load
+init();
   </script>
 </body>
 </html>
