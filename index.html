@@ -77,6 +77,24 @@
     </table>
   </div>
 
+  <!-- Earliest Date Modal -->
+<div class="modal fade" id="earliestDateModal" tabindex="-1" aria-labelledby="earliestDateLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="earliestDateLabel">Select Earliest Dow Jones Date</h5>
+      </div>
+      <div class="modal-body">
+        <label for="earliest-date-input" class="form-label">Earliest Date</label>
+        <input type="date" id="earliest-date-input" class="form-control">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="earliest-date-ok">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
   <script>
     // --- Series Management ---
 const SERIES_LIST_KEY = 'series_list';
@@ -270,26 +288,41 @@ async function fetchDowMissing(existingDatesSet) {
   }
 }
 
+// Get earliest date from user using modal
+async function getEarliestDateFromUser(defaultDate) {
+  return new Promise(resolve => {
+    const modal = new bootstrap.Modal(document.getElementById('earliestDateModal'));
+    const input = document.getElementById('earliest-date-input');
+    input.value = defaultDate;
+    document.getElementById('earliest-date-ok').onclick = () => {
+      modal.hide();
+      resolve(input.value || defaultDate);
+    };
+    modal.show();
+  });
+}
+
 // On page load: fetch if not already in localStorage, or update with missing days
 async function init() {
   showSpinner(true);
   let values = getValues();
-
-  // Build a set of existing dates for quick lookup
   const existingDates = new Set(values.map(v => v.date));
-
   const missing = await fetchDowMissing(existingDates);
 
   if (!values.length && missing.length) {
-    // Only keep last year if this is the initial load
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    const oneYearAgoStr = oneYearAgo.toISOString().slice(0, 10);
-    values = missing.filter(v => v.date >= oneYearAgoStr);
+    // Use modal datepicker instead of prompt
+    const defaultDate = (() => {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() - 1);
+      return d.toISOString().slice(0, 10);
+    })();
+    showSpinner(false); // Hide spinner before showing modal
+    const earliest = await getEarliestDateFromUser(defaultDate);
+    showSpinner(true); // Show spinner again while processing
+    values = missing.filter(v => v.date >= earliest);
     values.sort((a, b) => a.date.localeCompare(b.date));
     saveValues(values);
   } else if (missing.length) {
-    // On later loads, keep all history
     values = values.concat(missing);
     values.sort((a, b) => a.date.localeCompare(b.date));
     saveValues(values);
@@ -328,5 +361,9 @@ document.getElementById('dow-form').addEventListener('submit', function(e) {
 // Initial load
 init();
   </script>
+
+  <!-- Bootstrap JS (required for modals) and Popper.js -->
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"></script>
 </body>
 </html>
