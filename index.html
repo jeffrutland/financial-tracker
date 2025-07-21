@@ -131,18 +131,23 @@
       return d.toISOString().slice(0, 10);
     }
 
+    const FMP_API_KEY = 'ksnyJJle3CIgsIeWqvDsDbRPYM0wb96V';
+
     // Fetch Dow data for a date range using Twelve Data API
     async function fetchDowRange(fromDate, toDate) {
-      const apiKey = '970e2cab6ddf479091f626705ad2ab51';
-      const url = `https://api.twelvedata.com/time_series?symbol=DOW&interval=1day&start_date=${fromDate}&end_date=${toDate}&apikey=${apiKey}&format=JSON`;
+      const url = `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=^DJI&apikey=${FMP_API_KEY}`;
       try {
         const res = await fetch(url);
         const data = await res.json();
-        if (!data.values) throw new Error('No data');
-        return data.values.map(d => ({
-          date: d.datetime,
-          value: parseFloat(d.close)
-        })).reverse(); // API returns newest first
+        if (!Array.isArray(data)) throw new Error('No data');
+        // Filter by date range and map to {date, value}
+        return data
+          .filter(d => d.date >= fromDate && d.date <= toDate)
+          .map(d => ({
+            date: d.date,
+            value: d.close
+          }))
+          .sort((a, b) => a.date.localeCompare(b.date));
       } catch (e) {
         console.log('No Dow data retrieved for range:', fromDate, 'to', toDate, e);
         return [];
