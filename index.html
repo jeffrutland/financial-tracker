@@ -213,7 +213,6 @@ async function render() {
       tension: 0.2
     };
   });
-  console.log('Chart datasets:', datasets);
 
   window.dowChart = new Chart(ctx, {
     type: 'line',
@@ -305,6 +304,16 @@ document.getElementById('dow-form').addEventListener('submit', function(e) {
   const value = parseFloat(document.getElementById('value').value);
   if (!date || isNaN(value)) return;
   let values = getSeriesValues(series);
+
+  // Check for existing entry for this date (only for custom series)
+  if (series !== DOW_SERIES) {
+    const existing = values.find(v => v.date === date);
+    if (existing) {
+      const ok = confirm(`A value for ${date} already exists in "${series}". Replace it?`);
+      if (!ok) return;
+    }
+  }
+
   // Remove existing entry for this date
   values = values.filter(v => v.date !== date);
   values.push({ date, value });
