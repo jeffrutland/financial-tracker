@@ -56,6 +56,7 @@
       </div>
       <div class="col-auto ms-auto no-print">
         <button type="button" class="btn btn-secondary" onclick="print()">Print</button>
+        <button type="button" class="btn btn-success ms-2" id="download-json-btn">Download JSON</button>
       </div>
     </form>
 
@@ -360,6 +361,28 @@ document.getElementById('dow-form').addEventListener('submit', function(e) {
 
 // Initial load
 init();
+
+document.getElementById('download-json-btn').addEventListener('click', () => {
+  // Gather all series data
+  const allSeries = {};
+  const seriesList = getSeriesList();
+  seriesList.forEach(name => {
+    allSeries[name] = getSeriesValues(name);
+  });
+
+  // Create JSON blob
+  const blob = new Blob([JSON.stringify(allSeries, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  // Create a temporary link and click it
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'financial-tracker-data.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
   </script>
 
   <!-- Bootstrap JS (required for modals) and Popper.js -->
