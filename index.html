@@ -55,12 +55,14 @@
         <button type="submit" class="btn btn-primary">Add Value</button>
       </div>
       <div class="col-auto ms-auto no-print">
-        <button type="button" class="btn btn-secondary me-2" onclick="print()">Print</button>
         <div class="btn-group">
           <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
             Data
           </button>
           <ul class="dropdown-menu">
+            <li>
+              <a class="dropdown-item" href="#" id="print-menu">Print Chart</a>
+            </li>
             <li>
               <a class="dropdown-item" href="#" id="download-json-menu">Download JSON</a>
             </li>
@@ -81,6 +83,14 @@
 
     <div class="mb-4">
       <canvas id="dowChart" height="100"></canvas>
+    </div>
+
+    <div class="mb-3 d-flex justify-content-center align-items-center" id="chart-range-controls">
+      <label for="chart-from" class="me-2 mb-0">From</label>
+      <input type="date" id="chart-from" class="form-control mx-2" style="width:auto;">
+      <label for="chart-to" class="me-2 mb-0">To</label>
+      <input type="date" id="chart-to" class="form-control mx-2" style="width:auto;">
+      <button type="button" class="btn btn-primary ms-2" id="chart-range-apply">Apply</button>
     </div>
 
     <h3 id="values-heading" class="no-print"></h3>
@@ -144,7 +154,7 @@ function saveSeriesValues(series, values) {
 
 // Populate series dropdown
 function populateSeriesDropdown(selected) {
-  const list = getSeriesList();
+  const list = getSeriesList().filter(name => name !== DOW_SERIES); // Exclude Dow Jones
   const sel = document.getElementById('series');
   sel.innerHTML = '';
   list.forEach(name => {
@@ -153,7 +163,7 @@ function populateSeriesDropdown(selected) {
     opt.textContent = name;
     sel.appendChild(opt);
   });
-  sel.value = selected || list[0];
+  sel.value = selected && list.includes(selected) ? selected : list[0] || '';
 }
 
 // Add new series
@@ -174,12 +184,13 @@ document.getElementById('add-series-btn').addEventListener('click', () => {
   render();
 });
 
-// Disable form controls if Dow is selected
 function updateFormState() {
-  const isDow = document.getElementById('series').value === DOW_SERIES;
-  document.getElementById('date').disabled = isDow;
-  document.getElementById('value').disabled = isDow;
-  document.querySelector('button[type="submit"]').disabled = isDow;
+  const sel = document.getElementById('series');
+  const hasSeries = !!sel.value;
+  document.getElementById('series').disabled = !hasSeries;
+  document.getElementById('date').disabled = !hasSeries;
+  document.getElementById('value').disabled = !hasSeries;
+  document.querySelector('button[type="submit"]').disabled = !hasSeries;
 }
 
 // Call after populating dropdown and on change
@@ -194,6 +205,32 @@ document.getElementById('series').addEventListener('change', () => {
   render();
   updateFormState();
 });
+
+// --- Chart date range state ---
+let chartFrom, chartTo;
+
+// Set default date range: from = 2 months ago, to = today
+function setDefaultChartRange() {
+  const today = new Date();
+  const to = today.toISOString().slice(0, 10);
+  const fromDate = new Date(today);
+  fromDate.setMonth(fromDate.getMonth() - 2);
+  const from = fromDate.toISOString().slice(0, 10);
+  document.getElementById('chart-from').value = from;
+  document.getElementById('chart-to').value = to;
+  chartFrom = from;
+  chartTo = to;
+}
+
+// Listen for changes to date range controls
+document.getElementById('chart-range-apply').addEventListener('click', () => {
+  chartFrom = document.getElementById('chart-from').value;
+  chartTo = document.getElementById('chart-to').value;
+  render();
+});
+
+// Set defaults on page load
+setDefaultChartRange();
 
 // Utilities for localStorage
 const STORAGE_KEY = 'dow_values';
@@ -210,6 +247,7 @@ function saveValues(values) {
 async function render() {
   const seriesList = getSeriesList();
   const selectedSeries = document.getElementById('series').value;
+  updateFormState();
 
   // Update heading
   document.getElementById('values-heading').textContent = `Daily Values for ${selectedSeries}`;
@@ -243,6 +281,7 @@ async function render() {
 
   const datasets = seriesList.map((name, idx) => {
     const data = getSeriesValues(name)
+      .filter(v => (!chartFrom || v.date >= chartFrom) && (!chartTo || v.date <= chartTo))
       .map(v => ({ x: v.date, y: v.value }))
       .sort((a, b) => a.x.localeCompare(b.x));
     return {
@@ -475,6 +514,12 @@ document.getElementById('clear-data-btn').addEventListener('click', () => {
     render();
     alert('All data has been cleared.');
   }
+});
+
+// Print chart menu item
+document.getElementById('print-menu').addEventListener('click', function(e) {
+  e.preventDefault();
+  window.print();
 });
   </script>
 
