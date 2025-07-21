@@ -219,28 +219,6 @@ function formatDate(d) {
 }
 
 const FMP_API_KEY = 'ksnyJJle3CIgsIeWqvDsDbRPYM0wb96V';
-
-// Fetch Dow data for a date range using Twelve Data API
-async function fetchDowRange(fromDate, toDate) {
-  const url = `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=^DJI&apikey=${FMP_API_KEY}`;
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-    if (!Array.isArray(data)) throw new Error('No data');
-    // Filter by date range and map to {date, value}
-    return data
-      .filter(d => d.date >= fromDate && d.date <= toDate)
-      .map(d => ({
-        date: d.date,
-        value: d.close
-      }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-  } catch (e) {
-    console.log('No Dow data retrieved for range:', fromDate, 'to', toDate, e);
-    return [];
-  }
-}
-
 // Fetch all Dow data from FMP and filter by missing dates
 async function fetchDowMissing(existingDatesSet) {
   const url = `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=^DJI&apikey=${FMP_API_KEY}`;
