@@ -154,7 +154,7 @@ function saveSeriesValues(series, values) {
 
 // Populate series dropdown
 function populateSeriesDropdown(selected) {
-  const list = getSeriesList();
+  const list = getSeriesList().filter(name => name !== DOW_SERIES); // Exclude Dow Jones
   const sel = document.getElementById('series');
   sel.innerHTML = '';
   list.forEach(name => {
@@ -163,7 +163,7 @@ function populateSeriesDropdown(selected) {
     opt.textContent = name;
     sel.appendChild(opt);
   });
-  sel.value = selected || list[0];
+  sel.value = selected && list.includes(selected) ? selected : list[0] || '';
 }
 
 // Add new series
@@ -184,12 +184,13 @@ document.getElementById('add-series-btn').addEventListener('click', () => {
   render();
 });
 
-// Disable form controls if Dow is selected
 function updateFormState() {
-  const isDow = document.getElementById('series').value === DOW_SERIES;
-  document.getElementById('date').disabled = isDow;
-  document.getElementById('value').disabled = isDow;
-  document.querySelector('button[type="submit"]').disabled = isDow;
+  const sel = document.getElementById('series');
+  const hasSeries = !!sel.value;
+  document.getElementById('series').disabled = !hasSeries;
+  document.getElementById('date').disabled = !hasSeries;
+  document.getElementById('value').disabled = !hasSeries;
+  document.querySelector('button[type="submit"]').disabled = !hasSeries;
 }
 
 // Call after populating dropdown and on change
@@ -246,6 +247,7 @@ function saveValues(values) {
 async function render() {
   const seriesList = getSeriesList();
   const selectedSeries = document.getElementById('series').value;
+  updateFormState();
 
   // Update heading
   document.getElementById('values-heading').textContent = `Daily Values for ${selectedSeries}`;
