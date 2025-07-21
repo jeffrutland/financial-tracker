@@ -55,7 +55,27 @@
         <button type="submit" class="btn btn-primary">Add Value</button>
       </div>
       <div class="col-auto ms-auto no-print">
-        <button type="button" class="btn btn-secondary" onclick="print()">Print</button>
+        <button type="button" class="btn btn-secondary me-2" onclick="print()">Print</button>
+        <div class="btn-group">
+          <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            Data
+          </button>
+          <ul class="dropdown-menu">
+            <li>
+              <a class="dropdown-item" href="#" id="download-json-menu">Download JSON</a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="#" id="upload-json-menu">Upload JSON</a>
+              <input type="file" id="upload-json-input" accept="application/json" style="display:none;">
+            </li>
+            <li>
+              <hr class="dropdown-divider">
+            </li>
+            <li>
+              <button class="dropdown-item text-danger" id="clear-data-btn" type="button">Clear Data</button>
+            </li>
+          </ul>
+        </div>
       </div>
     </form>
 
@@ -82,7 +102,7 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="earliestDateLabel">Select Earliest Dow Jones Date</h5>
+        <h5 class="modal-title" id="earliestDateLabel">Select Earliest Date for Dow Jones Industrial Average data import</h5>
       </div>
       <div class="modal-body">
         <label for="earliest-date-input" class="form-label">Earliest Date</label>
@@ -360,6 +380,95 @@ document.getElementById('dow-form').addEventListener('submit', function(e) {
 
 // Initial load
 init();
+
+document.getElementById('download-json-menu').addEventListener('click', (e) => {
+  e.preventDefault();
+  // Gather all series data
+  const allSeries = {};
+  const seriesList = getSeriesList();
+  seriesList.forEach(name => {
+    allSeries[name] = getSeriesValues(name);
+  });
+
+  // Create JSON blob
+  const blob = new Blob([JSON.stringify(allSeries, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  // Create a temporary link and click it
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'financial-tracker-data.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+// Handle JSON upload
+document.getElementById('upload-json-menu').addEventListener('click', (e) => {
+  e.preventDefault();
+  document.getElementById('upload-json-input').click();
+});
+
+document.getElementById('upload-json-input').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      const data = JSON.parse(evt.target.result);
+
+      // Validate: must be an object with keys matching series names, and each value an array of {date, value}
+      if (
+        typeof data !== 'object' || Array.isArray(data) || !data ||
+        !Object.values(data).every(arr =>
+          Array.isArray(arr) &&
+          arr.every(
+            v =>
+              typeof v === 'object' &&
+              typeof v.date === 'string' &&
+              typeof v.value === 'number'
+          )
+        )
+      ) {
+        throw new Error();
+      }
+
+      // Overwrite all series data
+      const seriesNames = Object.keys(data);
+      saveSeriesList(seriesNames);
+      seriesNames.forEach(name => {
+        saveSeriesValues(name, data[name]);
+      });
+      populateSeriesDropdown(seriesNames[0]);
+      render();
+      alert('Data imported successfully!');
+    } catch {
+      alert('Invalid data format. Please upload a valid exported JSON file.');
+    }
+    this.value = '';
+  }.bind(this);
+  reader.readAsText(file);
+});
+
+// Clear data button
+document.getElementById('clear-data-btn').addEventListener('click', () => {
+  if (confirm('WARNING: This will permanently delete ALL your data. Are you sure you want to continue?')) {
+    // Remove all series data and reset to just Dow Jones
+    const seriesList = getSeriesList();
+    seriesList.forEach(name => {
+      if (name === DOW_SERIES) {
+        saveValues([]);
+      } else {
+        localStorage.removeItem('series_' + name);
+      }
+    });
+    saveSeriesList([DOW_SERIES]);
+    populateSeriesDropdown(DOW_SERIES);
+    render();
+    alert('All data has been cleared.');
+  }
+});
   </script>
 
   <!-- Bootstrap JS (required for modals) and Popper.js -->
