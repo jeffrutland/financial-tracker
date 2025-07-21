@@ -55,12 +55,14 @@
         <button type="submit" class="btn btn-primary">Add Value</button>
       </div>
       <div class="col-auto ms-auto no-print">
-        <button type="button" class="btn btn-secondary me-2" onclick="print()">Print</button>
         <div class="btn-group">
           <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
             Data
           </button>
           <ul class="dropdown-menu">
+            <li>
+              <a class="dropdown-item" href="#" id="print-menu">Print Chart</a>
+            </li>
             <li>
               <a class="dropdown-item" href="#" id="download-json-menu">Download JSON</a>
             </li>
@@ -510,6 +512,12 @@ document.getElementById('clear-data-btn').addEventListener('click', () => {
     render();
     alert('All data has been cleared.');
   }
+});
+
+// Print chart menu item
+document.getElementById('print-menu').addEventListener('click', function(e) {
+  e.preventDefault();
+  window.print();
 });
   </script>
 
