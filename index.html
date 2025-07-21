@@ -218,7 +218,7 @@ async function render() {
   const values = getSeriesValues(selectedSeries).sort((a, b) => a.date.localeCompare(b.date));
   const table = document.getElementById('values-table');
   table.innerHTML = values.map(v =>
-    `<tr><td>${v.date}</td><td>${Number(v.value).toLocaleString()}</td></tr>`
+    `<tr><td>${v.date}</td><td>${Number(v.value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>`
   ).join('');
 
   // Chart: show all series
@@ -357,8 +357,10 @@ document.getElementById('dow-form').addEventListener('submit', function(e) {
   e.preventDefault();
   const series = document.getElementById('series').value;
   const date = document.getElementById('date').value;
-  const value = parseFloat(document.getElementById('value').value);
+  let value = parseFloat(document.getElementById('value').value);
   if (!date || isNaN(value)) return;
+  // Truncate to two decimals
+  value = Math.trunc(value * 100) / 100;
   let values = getSeriesValues(series);
 
   // Check for existing entry for this date (only for custom series)
@@ -438,7 +440,12 @@ document.getElementById('upload-json-input').addEventListener('change', function
       const seriesNames = Object.keys(data);
       saveSeriesList(seriesNames);
       seriesNames.forEach(name => {
-        saveSeriesValues(name, data[name]);
+        // Truncate all imported values to two decimals
+        const fixed = data[name].map(v => ({
+          date: v.date,
+          value: Math.trunc(v.value * 100) / 100
+        }));
+        saveSeriesValues(name, fixed);
       });
       populateSeriesDropdown(seriesNames[0]);
       render();
