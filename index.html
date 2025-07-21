@@ -64,7 +64,16 @@
             <li>
               <a class="dropdown-item" href="#" id="download-json-menu">Download JSON</a>
             </li>
-            <!-- Add more data actions here if needed -->
+            <li>
+              <a class="dropdown-item" href="#" id="upload-json-menu">Upload JSON</a>
+              <input type="file" id="upload-json-input" accept="application/json" style="display:none;">
+            </li>
+            <li>
+              <hr class="dropdown-divider">
+            </li>
+            <li>
+              <button class="dropdown-item text-danger" id="clear-data-btn" type="button">Clear Data</button>
+            </li>
           </ul>
         </div>
       </div>
@@ -93,7 +102,7 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="earliestDateLabel">Select Earliest Dow Jones Date</h5>
+        <h5 class="modal-title" id="earliestDateLabel">Select Earliest Date for Dow Jones Industrial Average data import</h5>
       </div>
       <div class="modal-body">
         <label for="earliest-date-input" class="form-label">Earliest Date</label>
@@ -393,6 +402,72 @@ document.getElementById('download-json-menu').addEventListener('click', (e) => {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+});
+
+// Handle JSON upload
+document.getElementById('upload-json-menu').addEventListener('click', (e) => {
+  e.preventDefault();
+  document.getElementById('upload-json-input').click();
+});
+
+document.getElementById('upload-json-input').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      const data = JSON.parse(evt.target.result);
+
+      // Validate: must be an object with keys matching series names, and each value an array of {date, value}
+      if (
+        typeof data !== 'object' || Array.isArray(data) || !data ||
+        !Object.values(data).every(arr =>
+          Array.isArray(arr) &&
+          arr.every(
+            v =>
+              typeof v === 'object' &&
+              typeof v.date === 'string' &&
+              typeof v.value === 'number'
+          )
+        )
+      ) {
+        throw new Error();
+      }
+
+      // Overwrite all series data
+      const seriesNames = Object.keys(data);
+      saveSeriesList(seriesNames);
+      seriesNames.forEach(name => {
+        saveSeriesValues(name, data[name]);
+      });
+      populateSeriesDropdown(seriesNames[0]);
+      render();
+      alert('Data imported successfully!');
+    } catch {
+      alert('Invalid data format. Please upload a valid exported JSON file.');
+    }
+    this.value = '';
+  }.bind(this);
+  reader.readAsText(file);
+});
+
+// Clear data button
+document.getElementById('clear-data-btn').addEventListener('click', () => {
+  if (confirm('WARNING: This will permanently delete ALL your data. Are you sure you want to continue?')) {
+    // Remove all series data and reset to just Dow Jones
+    const seriesList = getSeriesList();
+    seriesList.forEach(name => {
+      if (name === DOW_SERIES) {
+        saveValues([]);
+      } else {
+        localStorage.removeItem('series_' + name);
+      }
+    });
+    saveSeriesList([DOW_SERIES]);
+    populateSeriesDropdown(DOW_SERIES);
+    render();
+    alert('All data has been cleared.');
+  }
 });
   </script>
 
