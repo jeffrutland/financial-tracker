@@ -63,7 +63,7 @@
       <canvas id="dowChart" height="100"></canvas>
     </div>
 
-    <h3 class="no-print">Daily Values</h3>
+    <h3 id="values-heading" class="no-print"></h3>
     <table class="table table-striped no-print">
       <thead>
         <tr>
@@ -172,6 +172,9 @@ function saveValues(values) {
 async function render() {
   const seriesList = getSeriesList();
   const selectedSeries = document.getElementById('series').value;
+
+  // Update heading
+  document.getElementById('values-heading').textContent = `Daily Values for ${selectedSeries}`;
 
   // Table: show only selected series
   const values = getSeriesValues(selectedSeries).sort((a, b) => a.date.localeCompare(b.date));
