@@ -154,38 +154,51 @@
       }
     }
 
+    // Fetch all Dow data from FMP and filter by missing dates
+    async function fetchDowMissing(existingDatesSet) {
+      const url = `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=^DJI&apikey=${FMP_API_KEY}`;
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!Array.isArray(data)) throw new Error('No data');
+        // Only return entries not already in local data
+        return data
+          .filter(d => !existingDatesSet.has(d.date))
+          .map(d => ({
+            date: d.date,
+            value: d.close
+          }));
+      } catch (e) {
+        console.log('No Dow data retrieved:', e);
+        return [];
+      }
+    }
+
     // On page load: fetch if not already in localStorage, or update with missing days
     async function init() {
       showSpinner(true);
       let values = getValues();
-      const today = formatDate(new Date());
 
-      if (!values.length) {
-        // No data: fetch last year
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setFullYear(endDate.getFullYear() - 1);
-        values = await fetchDowRange(formatDate(startDate), today);
-        if (values.length) saveValues(values);
-      } else {
-        // Data exists: check for missing days
+      // Build a set of existing dates for quick lookup
+      const existingDates = new Set(values.map(v => v.date));
+
+      const missing = await fetchDowMissing(existingDates);
+
+      if (!values.length && missing.length) {
+        // Only keep last year if this is the initial load
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        const oneYearAgoStr = oneYearAgo.toISOString().slice(0, 10);
+        values = missing.filter(v => v.date >= oneYearAgoStr);
         values.sort((a, b) => a.date.localeCompare(b.date));
-        const latestDate = values[values.length - 1].date;
-        if (latestDate < today) {
-          // Fetch missing days (from day after latestDate to today)
-          const nextDate = new Date(latestDate);
-          nextDate.setDate(nextDate.getDate() + 1);
-          const missing = await fetchDowRange(formatDate(nextDate), today);
-          if (missing.length) {
-            // Avoid duplicates, just in case
-            const existingDates = new Set(values.map(v => v.date));
-            const newValues = missing.filter(v => !existingDates.has(v.date));
-            values = values.concat(newValues);
-            values.sort((a, b) => a.date.localeCompare(b.date));
-            saveValues(values);
-          }
-        }
+        saveValues(values);
+      } else if (missing.length) {
+        // On later loads, keep all history
+        values = values.concat(missing);
+        values.sort((a, b) => a.date.localeCompare(b.date));
+        saveValues(values);
       }
+
       await render();
       showSpinner(false);
     }
