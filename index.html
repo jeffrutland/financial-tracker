@@ -55,8 +55,18 @@
         <button type="submit" class="btn btn-primary">Add Value</button>
       </div>
       <div class="col-auto ms-auto no-print">
-        <button type="button" class="btn btn-secondary" onclick="print()">Print</button>
-        <button type="button" class="btn btn-success ms-2" id="download-json-btn">Download JSON</button>
+        <button type="button" class="btn btn-secondary me-2" onclick="print()">Print</button>
+        <div class="btn-group">
+          <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            Data
+          </button>
+          <ul class="dropdown-menu">
+            <li>
+              <a class="dropdown-item" href="#" id="download-json-menu">Download JSON</a>
+            </li>
+            <!-- Add more data actions here if needed -->
+          </ul>
+        </div>
       </div>
     </form>
 
@@ -362,7 +372,8 @@ document.getElementById('dow-form').addEventListener('submit', function(e) {
 // Initial load
 init();
 
-document.getElementById('download-json-btn').addEventListener('click', () => {
+document.getElementById('download-json-menu').addEventListener('click', (e) => {
+  e.preventDefault();
   // Gather all series data
   const allSeries = {};
   const seriesList = getSeriesList();
