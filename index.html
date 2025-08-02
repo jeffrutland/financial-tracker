@@ -81,9 +81,6 @@
       </div>
     </form>
 
-    <!-- Replace single chart canvas with a container for multiple charts -->
-    <div class="mb-4" id="charts-container"></div>
-
     <div class="mb-3 d-flex justify-content-center align-items-center" id="chart-range-controls">
       <label for="chart-from" class="me-2 mb-0">Display data from</label>
       <input type="date" id="chart-from" class="form-control mx-2" style="width:auto;">
@@ -91,8 +88,6 @@
       <input type="date" id="chart-to" class="form-control mx-2" style="width:auto;">
       <button type="button" class="btn btn-primary ms-2" id="chart-range-apply">Apply</button>
     </div>
-
-  </div>
 
   <!-- Earliest Date Modal -->
 <div class="modal fade" id="earliestDateModal" tabindex="-1" aria-labelledby="earliestDateLabel" aria-hidden="true">
@@ -196,23 +191,56 @@ document.getElementById('series').addEventListener('change', () => {
 // --- Chart date range state ---
 let chartFrom, chartTo;
 
-// Set default date range: from = 2 months ago, to = today
+// Persist date range in localStorage and cookie
+function setDateRangePersist(from, to) {
+  localStorage.setItem('chartDateRange', JSON.stringify({ from, to }));
+  const expires = new Date(Date.now() + 365*24*60*60*1000).toUTCString();
+  document.cookie = `chartDateRange=${encodeURIComponent(from + ',' + to)}; expires=${expires}; path=/`;
+}
+function getDateRangePersist() {
+  // Try localStorage first
+  const ls = localStorage.getItem('chartDateRange');
+  if (ls) {
+    try {
+      const obj = JSON.parse(ls);
+      if (obj && obj.from && obj.to) return obj;
+    } catch {}
+  }
+  // Fallback to cookie
+  const match = document.cookie.match(/(?:^|; )chartDateRange=([^;]*)/);
+  if (match) {
+    const [from, to] = decodeURIComponent(match[1]).split(',');
+    if (from && to) return { from, to };
+  }
+  return null;
+}
+
+// Set default date range: from = 2 months ago, to = today, unless persisted
 function setDefaultChartRange() {
-  const today = new Date();
-  const to = today.toISOString().slice(0, 10);
-  const fromDate = new Date(today);
-  fromDate.setMonth(fromDate.getMonth() - 2);
-  const from = fromDate.toISOString().slice(0, 10);
-  document.getElementById('chart-from').value = from;
-  document.getElementById('chart-to').value = to;
-  chartFrom = from;
-  chartTo = to;
+  const persisted = getDateRangePersist();
+  if (persisted && persisted.from && persisted.to) {
+    document.getElementById('chart-from').value = persisted.from;
+    document.getElementById('chart-to').value = persisted.to;
+    chartFrom = persisted.from;
+    chartTo = persisted.to;
+  } else {
+    const today = new Date();
+    const to = today.toISOString().slice(0, 10);
+    const fromDate = new Date(today);
+    fromDate.setMonth(fromDate.getMonth() - 2);
+    const from = fromDate.toISOString().slice(0, 10);
+    document.getElementById('chart-from').value = from;
+    document.getElementById('chart-to').value = to;
+    chartFrom = from;
+    chartTo = to;
+  }
 }
 
 // Listen for changes to date range controls
 document.getElementById('chart-range-apply').addEventListener('click', () => {
   chartFrom = document.getElementById('chart-from').value;
   chartTo = document.getElementById('chart-to').value;
+  setDateRangePersist(chartFrom, chartTo);
   render();
 });
 
@@ -238,15 +266,30 @@ async function render() {
   const selectedSeries = document.getElementById('series').value;
   updateFormState();
 
-  // Update heading
-
   // Table: show only selected series
   const values = getSeriesValues(selectedSeries).sort((a, b) => a.date.localeCompare(b.date));
 
-  // Chart: show each series in its own chart
-  const chartsContainer = document.getElementById('charts-container');
-  chartsContainer.innerHTML = '';
-  chartsContainer.className = ''; // Remove Bootstrap row for grid
+  // --- Separate charts, synchronized dates ---
+  // Find the full date range from Dow Jones series (the longest history)
+  const dowValues = getSeriesValues('Dow Jones')
+    .filter(v => (!chartFrom || v.date >= chartFrom) && (!chartTo || v.date <= chartTo))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  if (dowValues.length === 0) return;
+  const minDate = dowValues[0].date;
+  const maxDate = dowValues[dowValues.length - 1].date;
+
+  // Build a list of all dates in the global range (inclusive)
+  function getDateList(start, end) {
+    const dates = [];
+    let d = new Date(start);
+    const endDate = new Date(end);
+    while (d <= endDate) {
+      dates.push(d.toISOString().slice(0, 10));
+      d.setDate(d.getDate() + 1);
+    }
+    return dates;
+  }
+  const dateList = getDateList(minDate, maxDate);
 
   // Helper for colors
   function getColor(idx) {
@@ -262,39 +305,53 @@ async function render() {
     return colors[idx % colors.length];
   }
 
-  // Destroy previous chart instances
-  Object.values(chartInstances).forEach(chart => {
-    try { chart.destroy(); } catch (e) {}
-  });
-  Object.keys(chartInstances).forEach(k => delete chartInstances[k]);
+  // Destroy previous chart instances if any
+  if (window.chartInstances) {
+    Object.values(window.chartInstances).forEach(chart => {
+      try { chart.destroy(); } catch (e) {}
+    });
+  }
+  window.chartInstances = {};
 
+  // Remove old charts and create a container for new ones
+  let chartsContainer = document.getElementById('charts-container');
+  if (!chartsContainer) {
+    chartsContainer = document.createElement('div');
+    chartsContainer.id = 'charts-container';
+    chartsContainer.className = 'mb-4';
+    document.querySelector('.container').insertBefore(chartsContainer, document.getElementById('chart-range-controls'));
+  }
+  chartsContainer.innerHTML = '';
+
+  // Render each series in its own chart, synchronizing dates
   seriesList.forEach((name, idx) => {
-    // Create a wrapper for each chart (vertical stacking)
     const wrapper = document.createElement('div');
-    wrapper.className = 'mb-2';
+    wrapper.className = 'mb-2'; // reduced margin-bottom for less vertical padding
 
-    // Add a small heading for each chart
-    const heading = document.createElement('h6');
+    const heading = document.createElement('h5');
     heading.textContent = name;
-    heading.className = 'mb-1';
+    heading.style.marginBottom = '0.25rem'; // reduce heading margin
     wrapper.appendChild(heading);
 
-    // Create canvas for chart
     const canvas = document.createElement('canvas');
-    canvas.height = 180; // keep reduced height
+    canvas.height = 150; // optionally reduce chart height for more charts per page
     canvas.style.width = '100%';
     wrapper.appendChild(canvas);
 
     chartsContainer.appendChild(wrapper);
 
-    // Prepare data
-    const data = getSeriesValues(name)
+    // Prepare data: fill missing dates with null
+    const valueMap = {};
+    getSeriesValues(name)
       .filter(v => (!chartFrom || v.date >= chartFrom) && (!chartTo || v.date <= chartTo))
-      .map(v => ({ x: v.date, y: v.value }))
-      .sort((a, b) => a.x.localeCompare(b.x));
+      .forEach(v => { valueMap[v.date] = v.value; });
 
-    // Create chart
-    chartInstances[name] = new Chart(canvas.getContext('2d'), {
+    const data = dateList.map(date => ({
+      x: date,
+      y: valueMap.hasOwnProperty(date) ? valueMap[date] : null
+    }));
+
+    window.chartInstances[name] = new Chart(canvas.getContext('2d'), {
       type: 'line',
       data: {
         datasets: [{
@@ -302,8 +359,9 @@ async function render() {
           data,
           borderColor: getColor(idx),
           backgroundColor: getColor(idx).replace('1)', '0.1)'),
-          fill: false,
-          tension: 0.2
+          fill: true,
+          tension: 0.2,
+          spanGaps: true
         }]
       },
       options: {
@@ -315,7 +373,9 @@ async function render() {
           x: {
             title: { display: true, text: 'Date' },
             type: 'time',
-            time: { unit: 'day' }
+            time: { unit: 'day' },
+            min: minDate,
+            max: maxDate
           },
           y: { title: { display: true, text: 'Value' } }
         }
