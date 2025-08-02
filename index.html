@@ -81,9 +81,8 @@
       </div>
     </form>
 
-    <div class="mb-4">
-      <canvas id="dowChart" height="100"></canvas>
-    </div>
+    <!-- Replace single chart canvas with a container for multiple charts -->
+    <div class="mb-4" id="charts-container"></div>
 
     <div class="mb-3 d-flex justify-content-center align-items-center" id="chart-range-controls">
       <label for="chart-from" class="me-2 mb-0">From</label>
@@ -243,7 +242,9 @@ function saveValues(values) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
 }
 
-// Render table and chart
+// Remove single chart logic and add multi-chart rendering
+const chartInstances = {}; // Store Chart.js instances by series name
+
 async function render() {
   const seriesList = getSeriesList();
   const selectedSeries = document.getElementById('series').value;
@@ -259,11 +260,10 @@ async function render() {
     `<tr><td>${v.date}</td><td>${Number(v.value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>`
   ).join('');
 
-  // Chart: show all series
-  const ctx = document.getElementById('dowChart').getContext('2d');
-  if (window.dowChart) {
-    try { await window.dowChart.destroy(); } catch (e) {}
-  }
+  // Chart: show each series in its own chart
+  const chartsContainer = document.getElementById('charts-container');
+  chartsContainer.innerHTML = '';
+  chartsContainer.className = ''; // Remove Bootstrap row for grid
 
   // Helper for colors
   function getColor(idx) {
@@ -279,40 +279,65 @@ async function render() {
     return colors[idx % colors.length];
   }
 
-  const datasets = seriesList.map((name, idx) => {
+  // Destroy previous chart instances
+  Object.values(chartInstances).forEach(chart => {
+    try { chart.destroy(); } catch (e) {}
+  });
+  Object.keys(chartInstances).forEach(k => delete chartInstances[k]);
+
+  seriesList.forEach((name, idx) => {
+    // Create a wrapper for each chart (vertical stacking)
+    const wrapper = document.createElement('div');
+    wrapper.className = 'mb-2';
+
+    // Add a small heading for each chart
+    const heading = document.createElement('h6');
+    heading.textContent = name;
+    heading.className = 'mb-1';
+    wrapper.appendChild(heading);
+
+    // Create canvas for chart
+    const canvas = document.createElement('canvas');
+    canvas.height = 180; // keep reduced height
+    canvas.style.width = '100%';
+    wrapper.appendChild(canvas);
+
+    chartsContainer.appendChild(wrapper);
+
+    // Prepare data
     const data = getSeriesValues(name)
       .filter(v => (!chartFrom || v.date >= chartFrom) && (!chartTo || v.date <= chartTo))
       .map(v => ({ x: v.date, y: v.value }))
       .sort((a, b) => a.x.localeCompare(b.x));
-    return {
-      label: name,
-      data,
-      borderColor: getColor(idx),
-      backgroundColor: getColor(idx).replace('1)', '0.1)'),
-      fill: false,
-      tension: 0.2
-    };
-  });
 
-  window.dowChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      datasets
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: true }
+    // Create chart
+    chartInstances[name] = new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        datasets: [{
+          label: name,
+          data,
+          borderColor: getColor(idx),
+          backgroundColor: getColor(idx).replace('1)', '0.1)'),
+          fill: false,
+          tension: 0.2
+        }]
       },
-      scales: {
-        x: {
-          title: { display: true, text: 'Date' },
-          type: 'time',
-          time: { unit: 'day' }
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false }
         },
-        y: { title: { display: true, text: 'Value' } }
+        scales: {
+          x: {
+            title: { display: true, text: 'Date' },
+            type: 'time',
+            time: { unit: 'day' }
+          },
+          y: { title: { display: true, text: 'Value' } }
+        }
       }
-    }
+    });
   });
 }
 
