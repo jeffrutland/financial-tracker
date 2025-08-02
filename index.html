@@ -34,7 +34,7 @@
     </div>
   </div>
   <div class="container py-4">
-    <h1 class="mb-4">Financial Tracker</h1>
+    <h1 class="mb-4 text-center">Financial Tracker</h1>
     <form id="dow-form" class="row g-3 align-items-end mb-4 no-print">
       <div class="col-auto">
         <button type="button" class="btn btn-outline-secondary" id="add-series-btn">+ New Series</button>
@@ -85,25 +85,13 @@
     <div class="mb-4" id="charts-container"></div>
 
     <div class="mb-3 d-flex justify-content-center align-items-center" id="chart-range-controls">
-      <label for="chart-from" class="me-2 mb-0">From</label>
+      <label for="chart-from" class="me-2 mb-0">Display data from</label>
       <input type="date" id="chart-from" class="form-control mx-2" style="width:auto;">
-      <label for="chart-to" class="me-2 mb-0">To</label>
+      <label for="chart-to" class="me-2 mb-0">to</label>
       <input type="date" id="chart-to" class="form-control mx-2" style="width:auto;">
       <button type="button" class="btn btn-primary ms-2" id="chart-range-apply">Apply</button>
     </div>
 
-    <h3 id="values-heading" class="no-print"></h3>
-    <table class="table table-striped no-print">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Dow Close</th>
-        </tr>
-      </thead>
-      <tbody id="values-table">
-        <!-- Values will be inserted here -->
-      </tbody>
-    </table>
   </div>
 
   <!-- Earliest Date Modal -->
@@ -251,14 +239,9 @@ async function render() {
   updateFormState();
 
   // Update heading
-  document.getElementById('values-heading').textContent = `Daily Values for ${selectedSeries}`;
 
   // Table: show only selected series
   const values = getSeriesValues(selectedSeries).sort((a, b) => a.date.localeCompare(b.date));
-  const table = document.getElementById('values-table');
-  table.innerHTML = values.map(v =>
-    `<tr><td>${v.date}</td><td>${Number(v.value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td></tr>`
-  ).join('');
 
   // Chart: show each series in its own chart
   const chartsContainer = document.getElementById('charts-container');
