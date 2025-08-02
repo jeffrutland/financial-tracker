@@ -324,14 +324,15 @@ async function render() {
   // Render each series in its own chart, synchronizing dates
   seriesList.forEach((name, idx) => {
     const wrapper = document.createElement('div');
-    wrapper.className = 'mb-4';
+    wrapper.className = 'mb-2'; // reduced margin-bottom for less vertical padding
 
     const heading = document.createElement('h5');
     heading.textContent = name;
+    heading.style.marginBottom = '0.25rem'; // reduce heading margin
     wrapper.appendChild(heading);
 
     const canvas = document.createElement('canvas');
-    canvas.height = 180;
+    canvas.height = 150; // optionally reduce chart height for more charts per page
     canvas.style.width = '100%';
     wrapper.appendChild(canvas);
 
