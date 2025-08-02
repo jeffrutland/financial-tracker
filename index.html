@@ -191,23 +191,56 @@ document.getElementById('series').addEventListener('change', () => {
 // --- Chart date range state ---
 let chartFrom, chartTo;
 
-// Set default date range: from = 2 months ago, to = today
+// Persist date range in localStorage and cookie
+function setDateRangePersist(from, to) {
+  localStorage.setItem('chartDateRange', JSON.stringify({ from, to }));
+  const expires = new Date(Date.now() + 365*24*60*60*1000).toUTCString();
+  document.cookie = `chartDateRange=${encodeURIComponent(from + ',' + to)}; expires=${expires}; path=/`;
+}
+function getDateRangePersist() {
+  // Try localStorage first
+  const ls = localStorage.getItem('chartDateRange');
+  if (ls) {
+    try {
+      const obj = JSON.parse(ls);
+      if (obj && obj.from && obj.to) return obj;
+    } catch {}
+  }
+  // Fallback to cookie
+  const match = document.cookie.match(/(?:^|; )chartDateRange=([^;]*)/);
+  if (match) {
+    const [from, to] = decodeURIComponent(match[1]).split(',');
+    if (from && to) return { from, to };
+  }
+  return null;
+}
+
+// Set default date range: from = 2 months ago, to = today, unless persisted
 function setDefaultChartRange() {
-  const today = new Date();
-  const to = today.toISOString().slice(0, 10);
-  const fromDate = new Date(today);
-  fromDate.setMonth(fromDate.getMonth() - 2);
-  const from = fromDate.toISOString().slice(0, 10);
-  document.getElementById('chart-from').value = from;
-  document.getElementById('chart-to').value = to;
-  chartFrom = from;
-  chartTo = to;
+  const persisted = getDateRangePersist();
+  if (persisted && persisted.from && persisted.to) {
+    document.getElementById('chart-from').value = persisted.from;
+    document.getElementById('chart-to').value = persisted.to;
+    chartFrom = persisted.from;
+    chartTo = persisted.to;
+  } else {
+    const today = new Date();
+    const to = today.toISOString().slice(0, 10);
+    const fromDate = new Date(today);
+    fromDate.setMonth(fromDate.getMonth() - 2);
+    const from = fromDate.toISOString().slice(0, 10);
+    document.getElementById('chart-from').value = from;
+    document.getElementById('chart-to').value = to;
+    chartFrom = from;
+    chartTo = to;
+  }
 }
 
 // Listen for changes to date range controls
 document.getElementById('chart-range-apply').addEventListener('click', () => {
   chartFrom = document.getElementById('chart-from').value;
   chartTo = document.getElementById('chart-to').value;
+  setDateRangePersist(chartFrom, chartTo);
   render();
 });
 
