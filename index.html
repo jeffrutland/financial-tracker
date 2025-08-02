@@ -34,7 +34,7 @@
     </div>
   </div>
   <div class="container py-4">
-    <h1 class="mb-4">Financial Tracker</h1>
+    <h1 class="mb-4 text-center">Financial Tracker</h1>
     <form id="dow-form" class="row g-3 align-items-end mb-4 no-print">
       <div class="col-auto">
         <button type="button" class="btn btn-outline-secondary" id="add-series-btn">+ New Series</button>
@@ -82,9 +82,9 @@
     </form>
 
     <div class="mb-3 d-flex justify-content-center align-items-center" id="chart-range-controls">
-      <label for="chart-from" class="me-2 mb-0">From</label>
+      <label for="chart-from" class="me-2 mb-0">Display data from</label>
       <input type="date" id="chart-from" class="form-control mx-2" style="width:auto;">
-      <label for="chart-to" class="me-2 mb-0">To</label>
+      <label for="chart-to" class="me-2 mb-0">to</label>
       <input type="date" id="chart-to" class="form-control mx-2" style="width:auto;">
       <button type="button" class="btn btn-primary ms-2" id="chart-range-apply">Apply</button>
     </div>
@@ -258,7 +258,9 @@ function saveValues(values) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
 }
 
-// Render table and chart
+// Remove single chart logic and add multi-chart rendering
+const chartInstances = {}; // Store Chart.js instances by series name
+
 async function render() {
   const seriesList = getSeriesList();
   const selectedSeries = document.getElementById('series').value;
