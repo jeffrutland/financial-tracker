@@ -1331,18 +1331,45 @@ function formatDate(d) {
   return d.toISOString().slice(0, 10);
 }
 
+// Calendar date where the page is open, not UTC. Used as the Dow request's end.
+function localDateString(d = new Date()) {
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
+function latestStoredDate(values) {
+  let latest = '';
+  values.forEach(v => {
+    if (v && typeof v.date === 'string' && v.date > latest) latest = v.date;
+  });
+  return latest;
+}
+
 const FMP_API_KEY = 'ksnyJJle3CIgsIeWqvDsDbRPYM0wb96V';
-// Fetch all Dow data from FMP and filter by missing dates
-async function fetchDowMissing(existingDatesSet) {
-  const url = `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=^DJI&apikey=${FMP_API_KEY}`;
+// When Dow closes are already saved, ask only from that newest date through today.
+// A first load, with nothing saved, still requests the full history.
+async function fetchDowMissing(existingDatesSet, fromDate) {
+  const params = new URLSearchParams({
+    symbol: '^DJI',
+    apikey: FMP_API_KEY
+  });
+  if (fromDate) {
+    const today = localDateString();
+    if (fromDate > today) return [];
+    params.set('from', fromDate);
+    params.set('to', today);
+  }
+  const url = `https://financialmodelingprep.com/stable/historical-price-eod/full?${params}`;
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
     if (!res.ok) throw new Error('Dow request failed');
     const data = await res.json();
     if (!Array.isArray(data)) throw new Error('No data');
-    // Only return entries not already in local data
+    // Only return entries not already in local data. Ignore anything before
+    // the requested start so a wide response cannot refill trimmed history.
     return data
-      .filter(d => d && typeof d.date === 'string' && !existingDatesSet.has(d.date) && Number.isFinite(Number(d.close)))
+      .filter(d => d && typeof d.date === 'string' && !existingDatesSet.has(d.date) && Number.isFinite(Number(d.close)) && (!fromDate || d.date >= fromDate))
       .map(d => ({
         date: d.date,
         value: Number(d.close)
@@ -1387,7 +1414,7 @@ async function init() {
 
     let values = getValues();
     const existingDates = new Set(values.map(v => v.date));
-    const missing = await fetchDowMissing(existingDates);
+    const missing = await fetchDowMissing(existingDates, latestStoredDate(values));
 
     if (!values.length && missing.length) {
       const defaultDate = (() => {
