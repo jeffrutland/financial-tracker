@@ -4,6 +4,16 @@
   <meta charset="UTF-8">
   <title>Financial Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    (function () {
+      var saved = localStorage.getItem('page_theme');
+      var legacy = { dark: '2', gray: '3', light: '5' };
+      var theme = legacy[saved] || saved;
+      if (theme !== '1' && theme !== '2' && theme !== '3' && theme !== '4' && theme !== '5') theme = '3';
+      document.documentElement.setAttribute('data-theme', theme);
+      document.documentElement.setAttribute('data-bs-theme', theme === '4' || theme === '5' ? 'light' : 'dark');
+    })();
+  </script>
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <!-- Chart.js -->
@@ -11,13 +21,474 @@
   <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
   <style>
+    [data-theme="3"] {
+      --page-bg: #3a4046;
+      --card-bg: #4c545c;
+      --text: #f3f5f6;
+      --muted: rgba(255, 255, 255, 0.68);
+      --line: rgba(255, 255, 255, 0.14);
+      --hover-fill: rgba(255, 255, 255, 0.08);
+      --well: rgba(0, 0, 0, 0.18);
+      --chart-ink: #d7dce0;
+      --chart-grid: rgba(255, 255, 255, 0.14);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.28), 0 1px 3px rgba(0, 0, 0, 0.22);
+      --shadow-hover: 0 2px 6px rgba(0, 0, 0, 0.32), 0 6px 14px rgba(0, 0, 0, 0.24);
+      --spinner-bg: rgba(58, 64, 70, 0.88);
+      --bs-body-bg: #3a4046;
+      --bs-body-color: #f3f5f6;
+      --bs-emphasis-color: #fff;
+      --bs-heading-color: #f7f8f8;
+      --bs-secondary-color: rgba(255, 255, 255, 0.7);
+      --bs-secondary-bg: #4c545c;
+      --bs-tertiary-bg: #565f68;
+      --bs-border-color: rgba(255, 255, 255, 0.16);
+      --bs-form-control-bg: #4c545c;
+      --bs-form-select-bg: #4c545c;
+      --bs-dropdown-bg: #4c545c;
+      --bs-dropdown-link-color: #f3f5f6;
+      --bs-dropdown-link-hover-bg: #5c656e;
+      --bs-dropdown-link-hover-color: #fff;
+      --bs-modal-bg: #4c545c;
+      --bs-modal-color: #f3f5f6;
+      color-scheme: dark;
+    }
+    [data-theme="1"] {
+      --page-bg: #0e1114;
+      --card-bg: #1a2026;
+      --text: #e8eaed;
+      --muted: rgba(255, 255, 255, 0.62);
+      --line: rgba(255, 255, 255, 0.1);
+      --hover-fill: rgba(255, 255, 255, 0.08);
+      --well: rgba(255, 255, 255, 0.04);
+      --chart-ink: #c5c9ce;
+      --chart-grid: rgba(255, 255, 255, 0.1);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.36);
+      --shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.5), 0 8px 18px rgba(0, 0, 0, 0.4);
+      --spinner-bg: rgba(14, 17, 20, 0.9);
+      --bs-body-bg: #0e1114;
+      --bs-body-color: #e8eaed;
+      --bs-emphasis-color: #fff;
+      --bs-heading-color: #f1f3f4;
+      --bs-secondary-color: rgba(255, 255, 255, 0.66);
+      --bs-secondary-bg: #1a2026;
+      --bs-tertiary-bg: #242b32;
+      --bs-border-color: rgba(255, 255, 255, 0.12);
+      --bs-form-control-bg: #1a2026;
+      --bs-form-select-bg: #1a2026;
+      --bs-dropdown-bg: #1a2026;
+      --bs-dropdown-link-color: #e8eaed;
+      --bs-dropdown-link-hover-bg: #2a3138;
+      --bs-dropdown-link-hover-color: #fff;
+      --bs-modal-bg: #1a2026;
+      --bs-modal-color: #e8eaed;
+      color-scheme: dark;
+    }
+    [data-theme="2"] {
+      --page-bg: #1a2128;
+      --card-bg: #27303a;
+      --text: #e8eaed;
+      --muted: rgba(255, 255, 255, 0.66);
+      --line: rgba(255, 255, 255, 0.12);
+      --hover-fill: rgba(255, 255, 255, 0.08);
+      --well: rgba(0, 0, 0, 0.16);
+      --chart-ink: #c9ced3;
+      --chart-grid: rgba(255, 255, 255, 0.12);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.38), 0 1px 3px rgba(0, 0, 0, 0.3);
+      --shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.42), 0 8px 18px rgba(0, 0, 0, 0.32);
+      --spinner-bg: rgba(26, 33, 40, 0.9);
+      --bs-body-bg: #1a2128;
+      --bs-body-color: #e8eaed;
+      --bs-emphasis-color: #fff;
+      --bs-heading-color: #f1f3f4;
+      --bs-secondary-color: rgba(255, 255, 255, 0.68);
+      --bs-secondary-bg: #27303a;
+      --bs-tertiary-bg: #323b46;
+      --bs-border-color: rgba(255, 255, 255, 0.14);
+      --bs-form-control-bg: #27303a;
+      --bs-form-select-bg: #27303a;
+      --bs-dropdown-bg: #27303a;
+      --bs-dropdown-link-color: #e8eaed;
+      --bs-dropdown-link-hover-bg: #36414c;
+      --bs-dropdown-link-hover-color: #fff;
+      --bs-modal-bg: #27303a;
+      --bs-modal-color: #e8eaed;
+      color-scheme: dark;
+    }
+    [data-theme="4"] {
+      --page-bg: #d5dbdf;
+      --card-bg: #eef1f3;
+      --text: #1c2126;
+      --muted: rgba(0, 0, 0, 0.58);
+      --line: rgba(0, 0, 0, 0.1);
+      --hover-fill: rgba(0, 0, 0, 0.06);
+      --well: rgba(0, 0, 0, 0.04);
+      --chart-ink: #3e464d;
+      --chart-grid: rgba(0, 0, 0, 0.1);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+      --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.1);
+      --spinner-bg: rgba(213, 219, 223, 0.9);
+      --bs-body-bg: #d5dbdf;
+      --bs-body-color: #1c2126;
+      --bs-emphasis-color: #111;
+      --bs-heading-color: #1c2126;
+      --bs-secondary-color: rgba(0, 0, 0, 0.62);
+      --bs-secondary-bg: #eef1f3;
+      --bs-tertiary-bg: #e4e8eb;
+      --bs-border-color: rgba(0, 0, 0, 0.18);
+      --bs-form-control-bg: #fff;
+      --bs-form-select-bg: #fff;
+      --bs-dropdown-bg: #fff;
+      --bs-dropdown-link-color: #1c2126;
+      --bs-dropdown-link-hover-bg: #e4e8eb;
+      --bs-dropdown-link-hover-color: #111;
+      --bs-modal-bg: #eef1f3;
+      --bs-modal-color: #1c2126;
+      color-scheme: light;
+    }
+    [data-theme="5"] {
+      --page-bg: #f8f9fa;
+      --card-bg: #fff;
+      --text: #212529;
+      --muted: rgba(0, 0, 0, 0.54);
+      --line: rgba(0, 0, 0, 0.12);
+      --hover-fill: rgba(0, 0, 0, 0.06);
+      --well: rgba(0, 0, 0, 0.03);
+      --chart-ink: #5f6368;
+      --chart-grid: rgba(0, 0, 0, 0.08);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
+      --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.14), 0 4px 8px rgba(0, 0, 0, 0.1);
+      --spinner-bg: rgba(255, 255, 255, 0.8);
+      --bs-body-bg: #f8f9fa;
+      --bs-body-color: #212529;
+      --bs-emphasis-color: #111;
+      --bs-heading-color: #212529;
+      --bs-secondary-color: rgba(0, 0, 0, 0.58);
+      --bs-secondary-bg: #fff;
+      --bs-tertiary-bg: #f8f9fa;
+      --bs-border-color: #ced4da;
+      --bs-form-control-bg: #fff;
+      --bs-form-select-bg: #fff;
+      --bs-dropdown-bg: #fff;
+      --bs-dropdown-link-color: #212529;
+      --bs-dropdown-link-hover-bg: #f1f3f5;
+      --bs-dropdown-link-hover-color: #111;
+      --bs-modal-bg: #fff;
+      --bs-modal-color: #212529;
+      color-scheme: light;
+    }
+    body {
+      background: var(--page-bg);
+      color: var(--text);
+    }
+    h1, h2, h3, h4, h5, h6 {
+      color: var(--text);
+    }
+    [data-theme="4"] .form-control,
+    [data-theme="4"] .form-select,
+    [data-theme="5"] .form-control,
+    [data-theme="5"] .form-select,
+    [data-theme="4"] .form-label,
+    [data-theme="5"] .form-label {
+      color: var(--text);
+      color-scheme: light;
+    }
+    [data-theme="4"] .form-control,
+    [data-theme="4"] .form-select,
+    [data-theme="5"] .form-control,
+    [data-theme="5"] .form-select {
+      background-color: #fff;
+      border-color: #adb5bd;
+    }
+    .page-header {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 1.5rem;
+    }
+    .page-header h1 {
+      grid-column: 2;
+      margin: 0;
+      text-align: center;
+    }
+    .brightness-control {
+      grid-column: 3;
+      justify-self: end;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text);
+    }
+    .brightness-icon {
+      flex: 0 0 auto;
+      width: 18px;
+      height: 18px;
+      display: block;
+    }
+    .brightness-slider {
+      width: 9rem;
+      height: 1.75rem;
+      margin: 0;
+      accent-color: var(--text);
+      cursor: grab;
+      touch-action: none;
+    }
+    .brightness-slider:active {
+      cursor: grabbing;
+    }
+    .brightness-slider:focus-visible {
+      outline: 2px solid #1a73e8;
+      outline-offset: 2px;
+    }
+    #chart-range-controls {
+      flex: 0 1 auto;
+      min-width: 0;
+      max-width: 100%;
+    }
+    #chart-range-controls .range-fields {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      max-width: 100%;
+    }
+    #chart-range-controls .form-control {
+      width: auto;
+      max-width: 100%;
+    }
+    #chart-range-controls .form-label {
+      text-align: right;
+    }
+    .page-footer {
+      margin-top: 0.5rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--line);
+    }
+    .storage-note {
+      margin: 0;
+      font-size: 0.8125rem;
+      line-height: 1.3;
+      color: var(--muted);
+      text-align: center;
+    }
+    @media (max-width: 640px) {
+      .page-header {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+      }
+      .page-header h1 {
+        align-self: center;
+        order: 2;
+      }
+      .brightness-control {
+        order: 1;
+      }
+      .brightness-slider {
+        width: 7rem;
+      }
+    }
     @media print {
       .no-print { display: none; }
+      body {
+        background: #fff !important;
+        color: #000 !important;
+      }
+      .chart-card, .series-group-toggle, .series-group-body {
+        background: #fff !important;
+        color: #000 !important;
+        box-shadow: none;
+        border: 1px solid #dee2e6;
+      }
+      .chart-card {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      .chart-card-count, .series-group-empty { color: #444 !important; }
+      .series-group-body { display: flex !important; }
+    }
+    .chart-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .chart-card {
+      background: var(--card-bg);
+      color: var(--text);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      padding: 12px 16px 8px;
+      transition: box-shadow 0.2s ease;
+    }
+    .chart-card:hover {
+      box-shadow: var(--shadow-hover);
+    }
+    .chart-card.is-dragging {
+      transition: none;
+      box-shadow:
+        0 8px 10px rgba(0, 0, 0, 0.14),
+        0 16px 24px rgba(0, 0, 0, 0.16);
+    }
+    .chart-card-header {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+    .chart-card-heading {
+      min-width: 0;
+      flex: 1;
+    }
+    .chart-card-title {
+      margin: 0;
+      min-width: 0;
+      font-size: 1.125rem;
+      font-weight: 500;
+      line-height: 1.4;
+      letter-spacing: 0.01em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .chart-card-count {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 400;
+      line-height: 1.2;
+    }
+    .chart-drag-handle {
+      appearance: none;
+      flex: 0 0 auto;
+      width: 40px;
+      height: 40px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      touch-action: none;
+    }
+    .chart-drag-handle:hover {
+      background: var(--hover-fill);
+    }
+    .chart-drag-handle:focus-visible {
+      outline: 2px solid #1a73e8;
+      outline-offset: 2px;
+    }
+    .chart-drag-handle:active,
+    body.is-chart-dragging {
+      cursor: grabbing;
+      user-select: none;
+    }
+    .chart-delete {
+      appearance: none;
+      flex: 0 0 auto;
+      margin-left: auto;
+      width: 40px;
+      height: 40px;
+      margin-top: 0;
+      margin-right: 0;
+      margin-bottom: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .chart-delete:hover {
+      background: rgba(220, 53, 69, 0.1);
+      color: #b02a37;
+    }
+    .chart-delete:focus-visible {
+      outline: 2px solid #1a73e8;
+      outline-offset: 2px;
+    }
+    .chart-card-placeholder {
+      box-sizing: border-box;
+      border: 2px dashed var(--line);
+      border-radius: 12px;
+      background: var(--well);
+    }
+    .series-group-toggle {
+      appearance: none;
+      width: 100%;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin: 0;
+      padding: 12px 16px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--card-bg);
+      box-shadow: var(--shadow);
+      color: var(--text);
+      font-size: 1.125rem;
+      font-weight: 500;
+      line-height: 1.4;
+      text-align: left;
+      cursor: pointer;
+    }
+    .series-group-toggle:focus-visible {
+      outline: 2px solid #1a73e8;
+      outline-offset: 2px;
+    }
+    .series-group.is-open .series-group-toggle {
+      border-radius: 12px 12px 0 0;
+      box-shadow: none;
+      border: 1px solid var(--line);
+      border-bottom: 0;
+    }
+    .series-group-chevron {
+      flex: 0 0 auto;
+      margin-top: 2px;
+      transition: transform 0.2s ease;
+    }
+    .series-group.is-open .series-group-chevron {
+      transform: rotate(90deg);
+    }
+    .series-group-label {
+      min-width: 0;
+      flex: 1;
+      white-space: normal;
+    }
+    .chart-plot {
+      position: relative;
+      height: 150px;
+    }
+    .series-group-body {
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      padding: 12px;
+      background: var(--well);
+      border: 1px solid var(--line);
+      border-top: 0;
+      border-radius: 0 0 12px 12px;
+    }
+    .series-group.is-open .series-group-body {
+      display: flex;
+    }
+    .series-group-empty {
+      margin: 0;
+      padding: 4px 8px;
+      color: var(--muted);
     }
     #spinner {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(255,255,255,0.8);
+      background: var(--spinner-bg);
+      color: var(--text);
       z-index: 9999;
       display: flex;
       align-items: center;
@@ -26,7 +497,7 @@
     #spinner.hidden { display: none; }
   </style>
 </head>
-<body class="bg-light">
+<body>
   <div id="spinner">
     <div class="text-center">
       <div class="spinner-border text-primary" style="width: 4rem; height: 4rem;" role="status"></div>
@@ -34,27 +505,49 @@
     </div>
   </div>
   <div class="container py-4">
-    <h1 class="mb-4 text-center">Financial Tracker</h1>
-    <form id="dow-form" class="row g-3 align-items-end mb-4 no-print">
-      <div class="col-auto">
+    <div class="page-header">
+      <h1>Financial Tracker</h1>
+      <div class="brightness-control no-print">
+        <svg class="brightness-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M14.2 2.4a8.8 8.8 0 1 0 7.4 13.7A7.2 7.2 0 0 1 14.2 2.4z"/>
+        </svg>
+        <input type="range" id="brightness" class="brightness-slider" min="1" max="5" step="1" value="3" aria-valuemin="1" aria-valuemax="5" aria-valuenow="3" aria-label="Brightness">
+        <svg class="brightness-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" fill="currentColor"/>
+          <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 2.5v2.2M12 19.3v2.2M4.7 4.7l1.6 1.6M17.7 17.7l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.7 19.3l1.6-1.6M17.7 6.3l1.6-1.6"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+    <form id="dow-form" class="row g-3 align-items-end mb-4">
+      <div class="col-auto no-print">
         <button type="button" class="btn btn-outline-secondary" id="add-series-btn">+ New Series</button>
       </div>
-      <div class="col-auto">
+      <div class="col-auto no-print">
         <label for="series" class="form-label">Series Name</label>
         <select id="series" class="form-select"></select>
       </div>
-      <div class="col-auto">
+      <div class="col-auto no-print">
         <label for="date" class="form-label">Date</label>
         <input type="date" id="date" class="form-control" required>
       </div>
-      <div class="col-auto">
+      <div class="col-auto no-print">
         <label for="value" class="form-label">Daily Closing Value</label>
         <input type="number" id="value" class="form-control" step="0.01" required>
       </div>
-      <div class="col-auto">
+      <div class="col-auto no-print">
         <button type="submit" class="btn btn-primary">Add Value</button>
       </div>
-      <div class="col-auto ms-auto no-print">
+      <div class="col-auto ms-auto" id="chart-range-controls">
+        <div class="range-fields" role="group" aria-label="Display dates">
+          <input type="date" id="chart-from" class="form-control" aria-label="From">
+          <span class="range-sep" aria-hidden="true">–</span>
+          <input type="date" id="chart-to" class="form-control" aria-label="To">
+          <button type="button" class="btn btn-outline-secondary" id="chart-range-apply">Apply</button>
+        </div>
+      </div>
+      <div class="col-auto no-print">
         <div class="btn-group">
           <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
             Data
@@ -81,14 +574,6 @@
       </div>
     </form>
 
-    <div class="mb-3 d-flex justify-content-center align-items-center" id="chart-range-controls">
-      <label for="chart-from" class="me-2 mb-0">Display data from</label>
-      <input type="date" id="chart-from" class="form-control mx-2" style="width:auto;">
-      <label for="chart-to" class="me-2 mb-0">to</label>
-      <input type="date" id="chart-to" class="form-control mx-2" style="width:auto;">
-      <button type="button" class="btn btn-primary ms-2" id="chart-range-apply">Apply</button>
-    </div>
-
   <!-- Earliest Date Modal -->
 <div class="modal fade" id="earliestDateModal" tabindex="-1" aria-labelledby="earliestDateLabel" aria-hidden="true">
   <div class="modal-dialog">
@@ -107,14 +592,60 @@
   </div>
 </div>
 
+<footer class="page-footer container">
+  <p id="storage-note" class="storage-note" aria-live="polite"></p>
+</footer>
+
   <script>
     // --- Series Management ---
 const SERIES_LIST_KEY = 'series_list';
 const DOW_SERIES = 'Dow Jones';
+const NET_WORTH_SERIES = 'Net Worth';
+const SERIES_GROUP_OPEN_KEY = 'series_group_open';
 
 // Get all series names
+function readStoredArray(key) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function getSeriesList() {
-  return JSON.parse(localStorage.getItem(SERIES_LIST_KEY) || `["${DOW_SERIES}"]`);
+  const fallback = [DOW_SERIES];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SERIES_LIST_KEY) || JSON.stringify(fallback));
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+// Dow first, then custom series. Net Worth is calculated, so it is not stored.
+function normalizeSeriesList() {
+  const raw = getSeriesList();
+  const custom = [];
+  raw.forEach(name => {
+    if (!name || name === DOW_SERIES || name === NET_WORTH_SERIES) return;
+    if (!custom.includes(name)) custom.push(name);
+  });
+  const next = [DOW_SERIES, ...custom];
+  if (raw.length !== next.length || raw.some((name, i) => name !== next[i])) saveSeriesList(next);
+  return next;
+}
+
+function customSeriesNames() {
+  return normalizeSeriesList().filter(name => name !== DOW_SERIES);
+}
+
+function isSeriesGroupOpen() {
+  return localStorage.getItem(SERIES_GROUP_OPEN_KEY) !== 'false';
+}
+
+function setSeriesGroupOpen(open) {
+  localStorage.setItem(SERIES_GROUP_OPEN_KEY, open ? 'true' : 'false');
 }
 
 // Save all series names
@@ -125,7 +656,7 @@ function saveSeriesList(list) {
 // Get values for a series
 function getSeriesValues(series) {
   if (series === DOW_SERIES) return getValues();
-  return JSON.parse(localStorage.getItem('series_' + series) || '[]');
+  return readStoredArray('series_' + series);
 }
 
 // Save values for a series
@@ -136,7 +667,7 @@ function saveSeriesValues(series, values) {
 
 // Populate series dropdown
 function populateSeriesDropdown(selected) {
-  const list = getSeriesList().filter(name => name !== DOW_SERIES); // Exclude Dow Jones
+  const list = customSeriesNames();
   const sel = document.getElementById('series');
   sel.innerHTML = '';
   list.forEach(name => {
@@ -154,7 +685,13 @@ document.getElementById('add-series-btn').addEventListener('click', () => {
   if (!name) return;
   name = name.trim();
   if (!name) return;
-  const list = getSeriesList();
+  if (name === NET_WORTH_SERIES || name === DOW_SERIES) {
+    alert(name === NET_WORTH_SERIES
+      ? 'Net Worth is calculated from your other series.'
+      : 'Dow Jones is already tracked.');
+    return;
+  }
+  const list = normalizeSeriesList();
   if (list.includes(name)) {
     alert('A series with this name already exists.');
     return;
@@ -176,6 +713,7 @@ function updateFormState() {
 }
 
 // Call after populating dropdown and on change
+normalizeSeriesList();
 populateSeriesDropdown();
 updateFormState();
 
@@ -215,12 +753,22 @@ function getDateRangePersist() {
   return null;
 }
 
+function writeChartRangeInputs(from, to) {
+  const fromEl = document.getElementById('chart-from');
+  const toEl = document.getElementById('chart-to');
+  fromEl.value = from;
+  toEl.value = to;
+  // defaultValue is what a form reset restores. Keep it on the display range
+  // so adding a series value cannot replace these fields.
+  fromEl.defaultValue = from;
+  toEl.defaultValue = to;
+}
+
 // Set default date range: from = 2 months ago, to = today, unless persisted
 function setDefaultChartRange() {
   const persisted = getDateRangePersist();
   if (persisted && persisted.from && persisted.to) {
-    document.getElementById('chart-from').value = persisted.from;
-    document.getElementById('chart-to').value = persisted.to;
+    writeChartRangeInputs(persisted.from, persisted.to);
     chartFrom = persisted.from;
     chartTo = persisted.to;
   } else {
@@ -229,8 +777,7 @@ function setDefaultChartRange() {
     const fromDate = new Date(today);
     fromDate.setMonth(fromDate.getMonth() - 2);
     const from = fromDate.toISOString().slice(0, 10);
-    document.getElementById('chart-from').value = from;
-    document.getElementById('chart-to').value = to;
+    writeChartRangeInputs(from, to);
     chartFrom = from;
     chartTo = to;
   }
@@ -240,6 +787,7 @@ function setDefaultChartRange() {
 document.getElementById('chart-range-apply').addEventListener('click', () => {
   chartFrom = document.getElementById('chart-from').value;
   chartTo = document.getElementById('chart-to').value;
+  writeChartRangeInputs(chartFrom, chartTo);
   setDateRangePersist(chartFrom, chartTo);
   render();
 });
@@ -251,7 +799,7 @@ setDefaultChartRange();
 const STORAGE_KEY = 'dow_values';
 
 function getValues() {
-  return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  return readStoredArray(STORAGE_KEY);
 }
 
 function saveValues(values) {
@@ -261,49 +809,520 @@ function saveValues(values) {
 // Remove single chart logic and add multi-chart rendering
 const chartInstances = {}; // Store Chart.js instances by series name
 
+function getColor(idx) {
+  const colors = [
+    'rgba(13,110,253,1)', // blue
+    'rgba(220,53,69,1)',  // red
+    'rgba(40,167,69,1)',  // green
+    'rgba(255,193,7,1)',  // yellow
+    'rgba(23,162,184,1)', // cyan
+    'rgba(108,117,125,1)',// gray
+    'rgba(111,66,193,1)', // purple
+  ];
+  return colors[idx % colors.length];
+}
+
+// Pointer-drag state for reordering chart cards. Order is series_list.
+let chartDrag = null;
+
+function commitChartOrder() {
+  const body = document.querySelector('.series-group-body');
+  if (!body) return;
+  const names = [...body.querySelectorAll(':scope > .chart-card')].map(card => card.dataset.series);
+  saveSeriesList([DOW_SERIES, ...names]);
+  const groupLabel = document.querySelector('.series-group-label');
+  if (groupLabel) groupLabel.textContent = names.length ? names.join(', ') : 'Series';
+  populateSeriesDropdown(document.getElementById('series').value);
+  const visual = [...document.querySelectorAll('#charts-container .chart-card')];
+  visual.forEach((card, idx) => {
+    const chart = window.chartInstances && window.chartInstances[card.dataset.series];
+    if (!chart) return;
+    const color = getColor(idx);
+    chart.data.datasets[0].borderColor = color;
+    chart.data.datasets[0].backgroundColor = color.replace('1)', '0.1)');
+    try {
+      chart.resize();
+      chart.update('none');
+    } catch (e) {}
+  });
+}
+
+function clearDraggedCardStyles(card) {
+  card.classList.remove('is-dragging');
+  card.style.position = '';
+  card.style.left = '';
+  card.style.top = '';
+  card.style.width = '';
+  card.style.margin = '';
+  card.style.zIndex = '';
+  const handle = card.querySelector('.chart-drag-handle');
+  if (handle) handle.removeAttribute('aria-pressed');
+}
+
+function finishChartDrag() {
+  if (!chartDrag) return;
+  const state = chartDrag;
+  chartDrag = null;
+  if (state.frame) cancelAnimationFrame(state.frame);
+  document.removeEventListener('pointermove', onChartPointerMove);
+  document.removeEventListener('pointerup', onChartPointerUp);
+  document.removeEventListener('pointercancel', onChartPointerUp);
+  document.body.classList.remove('is-chart-dragging');
+  try { state.handle.releasePointerCapture(state.pointerId); } catch (e) {}
+  if (state.placeholder.isConnected) state.placeholder.replaceWith(state.card);
+  clearDraggedCardStyles(state.card);
+  commitChartOrder();
+}
+
+function positionDraggedCard() {
+  chartDrag.card.style.top = `${chartDrag.clientY - chartDrag.offsetY}px`;
+}
+
+function adjacentChartCard(el, dir) {
+  let node = el[dir];
+  while (node && !node.classList.contains('chart-card')) node = node[dir];
+  return node;
+}
+
+function placeChartPlaceholder(clientY) {
+  const placeholder = chartDrag.placeholder;
+  const container = placeholder.parentNode;
+  if (!container) return;
+  // Step one card at a time so the slot cannot flicker back and forth.
+  for (let guard = 0; guard < 20; guard++) {
+    const next = adjacentChartCard(placeholder, 'nextElementSibling');
+    if (next) {
+      const rect = next.getBoundingClientRect();
+      if (clientY > rect.top + rect.height / 2) {
+        container.insertBefore(next, placeholder);
+        continue;
+      }
+    }
+    const prev = adjacentChartCard(placeholder, 'previousElementSibling');
+    if (prev) {
+      const rect = prev.getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) {
+        container.insertBefore(placeholder, prev);
+        continue;
+      }
+    }
+    break;
+  }
+}
+
+function chartDragFrame() {
+  if (!chartDrag) return;
+  const y = chartDrag.clientY;
+  const edge = 80;
+  const maxStep = 18;
+  if (y < edge) {
+    window.scrollBy(0, -Math.ceil(maxStep * (edge - y) / edge));
+  } else {
+    const fromBottom = window.innerHeight - y;
+    if (fromBottom < edge) window.scrollBy(0, Math.ceil(maxStep * (edge - fromBottom) / edge));
+  }
+  placeChartPlaceholder(y);
+  if (!chartDrag) return;
+  chartDrag.frame = requestAnimationFrame(chartDragFrame);
+}
+
+function onChartPointerMove(e) {
+  if (!chartDrag || e.pointerId !== chartDrag.pointerId) return;
+  chartDrag.clientY = e.clientY;
+  positionDraggedCard();
+  placeChartPlaceholder(e.clientY);
+}
+
+function onChartPointerUp(e) {
+  if (!chartDrag || e.pointerId !== chartDrag.pointerId) return;
+  finishChartDrag();
+}
+
+function onChartPointerDown(e) {
+  const handle = e.target.closest('.chart-drag-handle');
+  if (!handle || e.button !== 0 || chartDrag) return;
+  const card = handle.closest('.chart-card');
+  if (!card) return;
+  e.preventDefault();
+  const rect = card.getBoundingClientRect();
+  const placeholder = document.createElement('div');
+  placeholder.className = 'chart-card-placeholder';
+  placeholder.setAttribute('aria-hidden', 'true');
+  placeholder.style.height = `${rect.height}px`;
+  card.before(placeholder);
+  card.classList.add('is-dragging');
+  card.style.position = 'fixed';
+  card.style.left = `${rect.left}px`;
+  card.style.top = `${rect.top}px`;
+  card.style.width = `${rect.width}px`;
+  card.style.margin = '0';
+  card.style.zIndex = '30';
+  handle.setAttribute('aria-pressed', 'true');
+  try { handle.setPointerCapture(e.pointerId); } catch (err) {}
+  document.body.classList.add('is-chart-dragging');
+  document.body.appendChild(card);
+  chartDrag = {
+    pointerId: e.pointerId,
+    card,
+    handle,
+    placeholder,
+    offsetY: e.clientY - rect.top,
+    clientY: e.clientY,
+    frame: 0
+  };
+  document.addEventListener('pointermove', onChartPointerMove);
+  document.addEventListener('pointerup', onChartPointerUp);
+  document.addEventListener('pointercancel', onChartPointerUp);
+  chartDrag.frame = requestAnimationFrame(chartDragFrame);
+}
+
+function onChartKeyDown(e) {
+  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+  const handle = e.target.closest('.chart-drag-handle');
+  if (!handle) return;
+  const card = handle.closest('.chart-card');
+  const container = card && card.parentNode;
+  if (!container) return;
+  if (e.key === 'ArrowUp') {
+    const prev = card.previousElementSibling;
+    if (!prev) return;
+    e.preventDefault();
+    container.insertBefore(card, prev);
+  } else {
+    const next = card.nextElementSibling;
+    if (!next) return;
+    e.preventDefault();
+    container.insertBefore(next, card);
+  }
+  commitChartOrder();
+  handle.focus();
+}
+
+function bindChartDrag(chartsContainer) {
+  if (chartsContainer.dataset.dragBound) return;
+  chartsContainer.dataset.dragBound = '1';
+  chartsContainer.addEventListener('pointerdown', onChartPointerDown);
+  chartsContainer.addEventListener('keydown', onChartKeyDown);
+  chartsContainer.addEventListener('click', (e) => {
+    const removeBtn = e.target.closest('.chart-delete');
+    if (removeBtn && chartsContainer.contains(removeBtn)) {
+      e.preventDefault();
+      const card = removeBtn.closest('.chart-card');
+      if (card) removeEmptySeries(card.dataset.series);
+      return;
+    }
+    const toggle = e.target.closest('.series-group-toggle');
+    if (!toggle || !chartsContainer.contains(toggle)) return;
+    const group = toggle.closest('.series-group');
+    const open = !group.classList.contains('is-open');
+    group.classList.toggle('is-open', open);
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    setSeriesGroupOpen(open);
+    if (!open) return;
+    group.querySelectorAll('.chart-card').forEach(card => {
+      const chart = window.chartInstances && window.chartInstances[card.dataset.series];
+      if (!chart) return;
+      try { chart.resize(); } catch (err) {}
+    });
+  });
+}
+
+function removeEmptySeries(name) {
+  if (!name || name === DOW_SERIES || name === NET_WORTH_SERIES) return;
+  if (getSeriesValues(name).length) return;
+  if (!confirm(`Remove "${name}"? This empty series will be deleted.`)) return;
+  saveSeriesList(normalizeSeriesList().filter(item => item !== name));
+  localStorage.removeItem('series_' + name);
+  populateSeriesDropdown(document.getElementById('series').value);
+  render();
+}
+
+function datesFrom(start, end) {
+  const dates = [];
+  let d = new Date(start);
+  const endDate = new Date(end);
+  while (d <= endDate) {
+    dates.push(d.toISOString().slice(0, 10));
+    d.setDate(d.getDate() + 1);
+  }
+  return dates;
+}
+
+function pointsOnTimeline(valueMap, dateList) {
+  return dateList.reduce((count, date) => {
+    return count + (Object.prototype.hasOwnProperty.call(valueMap, date) && valueMap[date] != null ? 1 : 0);
+  }, 0);
+}
+
+function historyPointCount(name) {
+  return getSeriesValues(name).length;
+}
+
+function pointCountLabel(shown, history) {
+  const shownLabel = shown === 1 ? '1 shown' : `${shown} shown`;
+  const historyLabel = history === 1 ? '1 in history' : `${history} in history`;
+  return `${shownLabel} · ${historyLabel}`;
+}
+
+function pointsInRange(values) {
+  return values.filter(v => (!chartFrom || v.date >= chartFrom) && (!chartTo || v.date <= chartTo));
+}
+
+function valueMapFrom(values, ignoreRange) {
+  const map = {};
+  (ignoreRange ? values : pointsInRange(values)).forEach(v => {
+    if (v && v.date) map[v.date] = v.value;
+  });
+  return map;
+}
+
+// Earliest and latest YYYY-MM-DD among the lists. Bad dates are ignored.
+function dateExtent(valueLists) {
+  let minDate = null;
+  let maxDate = null;
+  valueLists.forEach(values => {
+    (values || []).forEach(v => {
+      if (!v || typeof v.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v.date)) return;
+      if (minDate === null || v.date < minDate) minDate = v.date;
+      if (maxDate === null || v.date > maxDate) maxDate = v.date;
+    });
+  });
+  return minDate ? { minDate, maxDate } : null;
+}
+
+// Last closing value of each series carries forward, then those values are added.
+// The Dow is not included. A series counts only after its first point.
+function calculateNetWorth(dateList) {
+  const carried = customSeriesNames().map(name => {
+    const sorted = getSeriesValues(name).slice().sort((a, b) => a.date.localeCompare(b.date));
+    return { sorted, index: 0, last: null };
+  });
+  const map = {};
+  dateList.forEach(date => {
+    let sum = null;
+    carried.forEach(series => {
+      while (series.index < series.sorted.length && series.sorted[series.index].date <= date) {
+        series.last = series.sorted[series.index].value;
+        series.index += 1;
+      }
+      if (series.last == null) return;
+      sum = (sum == null ? 0 : sum) + series.last;
+    });
+    map[date] = sum == null ? null : Math.round(sum * 100) / 100;
+  });
+  return map;
+}
+
+let printingCharts = false;
+
+function themeColor(name, fallback) {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+}
+
+function chartInk() {
+  return printingCharts ? '#333333' : themeColor('--chart-ink', '#5f6368');
+}
+
+function chartGrid() {
+  return printingCharts ? 'rgba(0, 0, 0, 0.08)' : themeColor('--chart-grid', 'rgba(0, 0, 0, 0.08)');
+}
+
+function chartScales(dateList) {
+  const ink = chartInk();
+  const grid = chartGrid();
+  return {
+    x: {
+      title: { display: true, text: 'Date', color: ink },
+      ticks: { color: ink },
+      grid: { color: grid },
+      border: { color: grid },
+      type: 'time',
+      time: { unit: 'day' },
+      min: dateList[0],
+      max: dateList[dateList.length - 1]
+    },
+    y: {
+      title: { display: true, text: 'Value', color: ink },
+      ticks: { color: ink },
+      grid: { color: grid },
+      border: { color: grid }
+    }
+  };
+}
+
+function applyChartChrome() {
+  const ink = chartInk();
+  const grid = chartGrid();
+  Object.values(window.chartInstances || {}).forEach(chart => {
+    ['x', 'y'].forEach(axis => {
+      const scale = chart.options.scales && chart.options.scales[axis];
+      if (!scale) return;
+      if (scale.title) scale.title.color = ink;
+      scale.ticks = Object.assign({}, scale.ticks, { color: ink });
+      scale.grid = Object.assign({}, scale.grid, { color: grid });
+      scale.border = Object.assign({}, scale.border, { color: grid });
+    });
+    try { chart.update('none'); } catch (e) {}
+  });
+}
+
+function setPageTheme(theme) {
+  if (theme === 'dark') theme = '2';
+  else if (theme === 'gray') theme = '3';
+  else if (theme === 'light') theme = '5';
+  if (theme !== '1' && theme !== '2' && theme !== '3' && theme !== '4' && theme !== '5') theme = '3';
+  document.documentElement.setAttribute('data-theme', theme);
+  document.documentElement.setAttribute('data-bs-theme', theme === '4' || theme === '5' ? 'light' : 'dark');
+  localStorage.setItem('page_theme', theme);
+  const slider = document.getElementById('brightness');
+  if (slider && slider.value !== theme) slider.value = theme;
+  if (slider) slider.setAttribute('aria-valuenow', theme);
+  applyChartChrome();
+}
+
+function createSeriesChart(parent, name, colorIndex, valueMap, dateList, draggable) {
+  const grouped = parent.classList.contains('series-group-body');
+  const wrapper = document.createElement('div');
+  wrapper.className = 'chart-card';
+  wrapper.dataset.series = name;
+  wrapper.setAttribute('role', 'listitem');
+
+  const header = document.createElement('div');
+  header.className = 'chart-card-header';
+  if (draggable) {
+    const handle = document.createElement('button');
+    handle.type = 'button';
+    handle.className = 'chart-drag-handle no-print';
+    handle.setAttribute('aria-label', `Drag to reorder ${name}`);
+    handle.title = 'Drag to reorder';
+    handle.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
+    header.appendChild(handle);
+  }
+  const headingWrap = document.createElement('div');
+  headingWrap.className = 'chart-card-heading';
+  const heading = document.createElement('h2');
+  heading.className = 'chart-card-title';
+  heading.textContent = name;
+  headingWrap.appendChild(heading);
+  if (name !== NET_WORTH_SERIES) {
+    const countNote = document.createElement('p');
+    countNote.className = 'chart-card-count';
+    countNote.textContent = pointCountLabel(pointsOnTimeline(valueMap, dateList), historyPointCount(name));
+    headingWrap.appendChild(countNote);
+  }
+  header.appendChild(headingWrap);
+  if (grouped && !getSeriesValues(name).length) {
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'chart-delete no-print';
+    removeBtn.setAttribute('aria-label', `Remove ${name}`);
+    removeBtn.title = 'Remove series';
+    removeBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M7 7l1 13h8l1-13"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+    header.appendChild(removeBtn);
+  }
+  wrapper.appendChild(header);
+
+  const canvas = document.createElement('canvas');
+  canvas.height = 150;
+  canvas.style.width = '100%';
+  if (grouped) {
+    const plot = document.createElement('div');
+    plot.className = 'chart-plot';
+    plot.appendChild(canvas);
+    wrapper.appendChild(plot);
+  } else {
+    wrapper.appendChild(canvas);
+  }
+  parent.appendChild(wrapper);
+
+  const points = dateList.map(date => ({
+    x: date,
+    y: Object.prototype.hasOwnProperty.call(valueMap, date) ? valueMap[date] : null
+  }));
+  const color = getColor(colorIndex);
+  window.chartInstances[name] = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      datasets: [{
+        label: name,
+        data: points,
+        borderColor: color,
+        backgroundColor: color.replace('1)', '0.1)'),
+        fill: true,
+        tension: 0.2,
+        spanGaps: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: !grouped,
+      plugins: { legend: { display: false } },
+      scales: chartScales(dateList)
+    }
+  });
+}
+
+function storedByteLength(text) {
+  return new TextEncoder().encode(text || '').length;
+}
+
+function formatStoredBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  const kb = bytes / 1024;
+  return (kb < 10 ? kb.toFixed(1) : Math.round(kb)) + ' KB';
+}
+
+function updateStorageNote() {
+  const note = document.getElementById('storage-note');
+  if (!note) return;
+  const names = customSeriesNames();
+  const dowCount = getValues().length;
+  let accountCount = 0;
+  let bytes = storedByteLength(localStorage.getItem(STORAGE_KEY));
+  bytes += storedByteLength(localStorage.getItem(SERIES_LIST_KEY));
+  names.forEach(name => {
+    accountCount += getSeriesValues(name).length;
+    bytes += storedByteLength(localStorage.getItem('series_' + name));
+  });
+  const parts = [];
+  if (dowCount) parts.push(dowCount + (dowCount === 1 ? ' Dow close' : ' Dow closes'));
+  if (accountCount) parts.push(accountCount + (accountCount === 1 ? ' series value' : ' series values'));
+  note.textContent = parts.length ? parts.join(' · ') + ' · ' + formatStoredBytes(bytes) + ' stored' : 'Nothing stored';
+}
+
 async function render() {
-  const seriesList = getSeriesList();
+  finishChartDrag();
+  updateStorageNote();
+  const seriesList = normalizeSeriesList();
   const selectedSeries = document.getElementById('series').value;
   updateFormState();
 
   // Table: show only selected series
   const values = getSeriesValues(selectedSeries).sort((a, b) => a.date.localeCompare(b.date));
 
-  // --- Separate charts, synchronized dates ---
-  // Find the full date range from Dow Jones series (the longest history)
-  const dowValues = getSeriesValues('Dow Jones')
-    .filter(v => (!chartFrom || v.date >= chartFrom) && (!chartTo || v.date <= chartTo))
-    .sort((a, b) => a.date.localeCompare(b.date));
-  if (dowValues.length === 0) return;
-  const minDate = dowValues[0].date;
-  const maxDate = dowValues[dowValues.length - 1].date;
-
-  // Build a list of all dates in the global range (inclusive)
-  function getDateList(start, end) {
-    const dates = [];
-    let d = new Date(start);
-    const endDate = new Date(end);
-    while (d <= endDate) {
-      dates.push(d.toISOString().slice(0, 10));
-      d.setDate(d.getDate() + 1);
+  // One shared axis for every series. Dow is not required: a failed refresh
+  // must not hide series that are already saved.
+  const customNames = seriesList.filter(name => name !== DOW_SERIES && name !== NET_WORTH_SERIES);
+  const storedLists = [getSeriesValues(DOW_SERIES), ...customNames.map(name => getSeriesValues(name))];
+  let plotAllStored = false;
+  let extent = dateExtent(storedLists.map(pointsInRange));
+  if (!extent) {
+    extent = dateExtent(storedLists);
+    plotAllStored = !!extent;
+  }
+  if (!extent) {
+    if (!customNames.length) return;
+    const today = formatDate(new Date());
+    extent = { minDate: chartFrom || today, maxDate: chartTo || chartFrom || today };
+    if (extent.minDate > extent.maxDate) {
+      const swap = extent.minDate;
+      extent.minDate = extent.maxDate;
+      extent.maxDate = swap;
     }
-    return dates;
   }
-  const dateList = getDateList(minDate, maxDate);
-
-  // Helper for colors
-  function getColor(idx) {
-    const colors = [
-      'rgba(13,110,253,1)', // blue
-      'rgba(220,53,69,1)',  // red
-      'rgba(40,167,69,1)',  // green
-      'rgba(255,193,7,1)',  // yellow
-      'rgba(23,162,184,1)', // cyan
-      'rgba(108,117,125,1)',// gray
-      'rgba(111,66,193,1)', // purple
-    ];
-    return colors[idx % colors.length];
-  }
+  const dateList = datesFrom(extent.minDate, extent.maxDate);
+  if (!dateList.length) return;
 
   // Destroy previous chart instances if any
   if (window.chartInstances) {
@@ -318,70 +1337,63 @@ async function render() {
   if (!chartsContainer) {
     chartsContainer = document.createElement('div');
     chartsContainer.id = 'charts-container';
-    chartsContainer.className = 'mb-4';
-    document.querySelector('.container').insertBefore(chartsContainer, document.getElementById('chart-range-controls'));
   }
+  document.getElementById('dow-form').insertAdjacentElement('afterend', chartsContainer);
+  chartsContainer.className = 'chart-stack mb-4';
+  chartsContainer.setAttribute('role', 'list');
+  chartsContainer.setAttribute('aria-label', 'Charts');
+  bindChartDrag(chartsContainer);
   chartsContainer.innerHTML = '';
 
-  // Render each series in its own chart, synchronizing dates
-  seriesList.forEach((name, idx) => {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'mb-2'; // reduced margin-bottom for less vertical padding
+  let colorIndex = 0;
 
-    const heading = document.createElement('h5');
-    heading.textContent = name;
-    heading.style.marginBottom = '0.25rem'; // reduce heading margin
-    wrapper.appendChild(heading);
+  createSeriesChart(
+    chartsContainer,
+    DOW_SERIES,
+    colorIndex++,
+    valueMapFrom(getSeriesValues(DOW_SERIES), plotAllStored),
+    dateList,
+    false
+  );
 
-    const canvas = document.createElement('canvas');
-    canvas.height = 150; // optionally reduce chart height for more charts per page
-    canvas.style.width = '100%';
-    wrapper.appendChild(canvas);
+  const group = document.createElement('section');
+  group.className = 'series-group' + (isSeriesGroupOpen() ? ' is-open' : '');
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'series-group-toggle';
+  toggle.setAttribute('aria-expanded', group.classList.contains('is-open') ? 'true' : 'false');
+  toggle.setAttribute('aria-controls', 'series-group-body');
+  toggle.innerHTML = '<svg class="series-group-chevron" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>';
+  const groupLabel = document.createElement('span');
+  groupLabel.className = 'series-group-label';
+  groupLabel.textContent = customNames.length ? customNames.join(', ') : 'Series';
+  toggle.appendChild(groupLabel);
+  group.appendChild(toggle);
 
-    chartsContainer.appendChild(wrapper);
-
-    // Prepare data: fill missing dates with null
-    const valueMap = {};
-    getSeriesValues(name)
-      .filter(v => (!chartFrom || v.date >= chartFrom) && (!chartTo || v.date <= chartTo))
-      .forEach(v => { valueMap[v.date] = v.value; });
-
-    const data = dateList.map(date => ({
-      x: date,
-      y: valueMap.hasOwnProperty(date) ? valueMap[date] : null
-    }));
-
-    window.chartInstances[name] = new Chart(canvas.getContext('2d'), {
-      type: 'line',
-      data: {
-        datasets: [{
-          label: name,
-          data,
-          borderColor: getColor(idx),
-          backgroundColor: getColor(idx).replace('1)', '0.1)'),
-          fill: true,
-          tension: 0.2,
-          spanGaps: true
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { display: false }
-        },
-        scales: {
-          x: {
-            title: { display: true, text: 'Date' },
-            type: 'time',
-            time: { unit: 'day' },
-            min: minDate,
-            max: maxDate
-          },
-          y: { title: { display: true, text: 'Value' } }
-        }
-      }
-    });
+  const groupBody = document.createElement('div');
+  groupBody.id = 'series-group-body';
+  groupBody.className = 'series-group-body';
+  groupBody.setAttribute('role', 'list');
+  if (!customNames.length) {
+    const empty = document.createElement('p');
+    empty.className = 'series-group-empty';
+    empty.textContent = 'No series yet. Use + New Series to add one.';
+    groupBody.appendChild(empty);
+  }
+  customNames.forEach(name => {
+    createSeriesChart(groupBody, name, colorIndex++, valueMapFrom(getSeriesValues(name), plotAllStored), dateList, true);
   });
+  group.appendChild(groupBody);
+  chartsContainer.appendChild(group);
+
+  createSeriesChart(
+    chartsContainer,
+    NET_WORTH_SERIES,
+    colorIndex,
+    calculateNetWorth(dateList),
+    dateList,
+    false
+  );
 }
 
 // Show/hide spinner
@@ -394,20 +1406,74 @@ function formatDate(d) {
   return d.toISOString().slice(0, 10);
 }
 
+// Calendar date where the page is open, not UTC. Used as the Dow request's end.
+function localDateString(d = new Date()) {
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
+function latestStoredDate(values) {
+  let latest = '';
+  values.forEach(v => {
+    if (v && typeof v.date === 'string' && v.date > latest) latest = v.date;
+  });
+  return latest;
+}
+
+// Earliest saved account date. Dow and Net Worth do not count.
+function earliestCustomSeriesDate() {
+  let earliest = '';
+  customSeriesNames().forEach(name => {
+    getSeriesValues(name).forEach(v => {
+      if (!v || typeof v.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v.date)) return;
+      if (!earliest || v.date < earliest) earliest = v.date;
+    });
+  });
+  return earliest;
+}
+
+// Drop Dow closes older than the first account date. Account rows stay.
+function trimStoredDowToSeriesStart() {
+  const earliest = earliestCustomSeriesDate();
+  if (!earliest) return;
+  const values = getValues();
+  const kept = values.filter(v => {
+    if (!v || typeof v.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v.date)) return true;
+    return v.date >= earliest;
+  });
+  if (kept.length === values.length) return;
+  kept.sort((a, b) => a.date.localeCompare(b.date));
+  saveValues(kept);
+}
+
 const FMP_API_KEY = 'ksnyJJle3CIgsIeWqvDsDbRPYM0wb96V';
-// Fetch all Dow data from FMP and filter by missing dates
-async function fetchDowMissing(existingDatesSet) {
-  const url = `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=^DJI&apikey=${FMP_API_KEY}`;
+// When Dow closes are already saved, ask only from that newest date through today.
+// A first load, with nothing saved, still requests the full history.
+async function fetchDowMissing(existingDatesSet, fromDate) {
+  const params = new URLSearchParams({
+    symbol: '^DJI',
+    apikey: FMP_API_KEY
+  });
+  if (fromDate) {
+    const today = localDateString();
+    if (fromDate > today) return [];
+    params.set('from', fromDate);
+    params.set('to', today);
+  }
+  const url = `https://financialmodelingprep.com/stable/historical-price-eod/full?${params}`;
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    if (!res.ok) throw new Error('Dow request failed');
     const data = await res.json();
     if (!Array.isArray(data)) throw new Error('No data');
-    // Only return entries not already in local data
+    // Only return entries not already in local data. Ignore anything before
+    // the requested start so a wide response cannot refill trimmed history.
     return data
-      .filter(d => !existingDatesSet.has(d.date))
+      .filter(d => d && typeof d.date === 'string' && !existingDatesSet.has(d.date) && Number.isFinite(Number(d.close)) && (!fromDate || d.date >= fromDate))
       .map(d => ({
         date: d.date,
-        value: d.close
+        value: Number(d.close)
       }));
   } catch (e) {
     console.log('No Dow data retrieved:', e);
@@ -429,34 +1495,60 @@ async function getEarliestDateFromUser(defaultDate) {
   });
 }
 
-// On page load: fetch if not already in localStorage, or update with missing days
+function hasStoredPoints() {
+  if (getValues().length) return true;
+  return customSeriesNames().some(name => getSeriesValues(name).length);
+}
+
+// Draw saved charts first. The Dow request only adds missing closes;
+// a failure, timeout, or hang must leave those charts on screen.
 async function init() {
-  showSpinner(true);
-  let values = getValues();
-  const existingDates = new Set(values.map(v => v.date));
-  const missing = await fetchDowMissing(existingDates);
+  let painted = false;
+  try {
+    trimStoredDowToSeriesStart();
+    if (hasStoredPoints()) {
+      await render();
+      painted = true;
+      showSpinner(false);
+    } else {
+      showSpinner(true);
+    }
 
-  if (!values.length && missing.length) {
-    // Use modal datepicker instead of prompt
-    const defaultDate = (() => {
-      const d = new Date();
-      d.setFullYear(d.getFullYear() - 1);
-      return d.toISOString().slice(0, 10);
-    })();
-    showSpinner(false); // Hide spinner before showing modal
-    const earliest = await getEarliestDateFromUser(defaultDate);
-    showSpinner(true); // Show spinner again while processing
-    values = missing.filter(v => v.date >= earliest);
-    values.sort((a, b) => a.date.localeCompare(b.date));
-    saveValues(values);
-  } else if (missing.length) {
-    values = values.concat(missing);
-    values.sort((a, b) => a.date.localeCompare(b.date));
-    saveValues(values);
+    let values = getValues();
+    const existingDates = new Set(values.map(v => v.date));
+    const seriesStart = earliestCustomSeriesDate();
+    const fromDate = latestStoredDate(values) || seriesStart;
+    const missing = (await fetchDowMissing(existingDates, fromDate))
+      .filter(v => !seriesStart || v.date >= seriesStart);
+
+    if (!values.length && missing.length && !seriesStart) {
+      const defaultDate = (() => {
+        const d = new Date();
+        d.setFullYear(d.getFullYear() - 1);
+        return d.toISOString().slice(0, 10);
+      })();
+      showSpinner(false);
+      const earliest = await getEarliestDateFromUser(defaultDate);
+      showSpinner(true);
+      values = missing.filter(v => v.date >= earliest);
+      values.sort((a, b) => a.date.localeCompare(b.date));
+      saveValues(values);
+    } else if (missing.length) {
+      values = values.concat(missing);
+      values.sort((a, b) => a.date.localeCompare(b.date));
+      saveValues(values);
+    }
+
+    await render();
+    painted = true;
+  } catch (e) {
+    console.log('Dow update failed:', e);
+    if (!painted) {
+      try { await render(); } catch (err) { console.log('Chart render failed:', err); }
+    }
+  } finally {
+    showSpinner(false);
   }
-
-  await render();
-  showSpinner(false);
 }
 
 // Form handler
@@ -465,6 +1557,7 @@ document.getElementById('dow-form').addEventListener('submit', function(e) {
   const series = document.getElementById('series').value;
   const date = document.getElementById('date').value;
   let value = parseFloat(document.getElementById('value').value);
+  if (!series || series === NET_WORTH_SERIES || series === DOW_SERIES) return;
   if (!date || isNaN(value)) return;
   // Truncate to two decimals
   value = Math.trunc(value * 100) / 100;
@@ -483,8 +1576,11 @@ document.getElementById('dow-form').addEventListener('submit', function(e) {
   values = values.filter(v => v.date !== date);
   values.push({ date, value });
   saveSeriesValues(series, values);
+  const keepFrom = document.getElementById('chart-from').value;
+  const keepTo = document.getElementById('chart-to').value;
   render();
   this.reset();
+  writeChartRangeInputs(keepFrom, keepTo);
 });
 
 // Initial load
@@ -543,8 +1639,8 @@ document.getElementById('upload-json-input').addEventListener('change', function
         throw new Error();
       }
 
-      // Overwrite all series data
-      const seriesNames = Object.keys(data);
+      // Overwrite all series data. Net Worth is calculated, so a stored copy is skipped.
+      const seriesNames = Object.keys(data).filter(name => name !== NET_WORTH_SERIES);
       saveSeriesList(seriesNames);
       seriesNames.forEach(name => {
         // Truncate all imported values to two decimals
@@ -554,7 +1650,9 @@ document.getElementById('upload-json-input').addEventListener('change', function
         }));
         saveSeriesValues(name, fixed);
       });
-      populateSeriesDropdown(seriesNames[0]);
+      normalizeSeriesList();
+      populateSeriesDropdown(seriesNames.find(name => name !== DOW_SERIES));
+      trimStoredDowToSeriesStart();
       render();
       alert('Data imported successfully!');
     } catch {
@@ -577,6 +1675,7 @@ document.getElementById('clear-data-btn').addEventListener('click', () => {
         localStorage.removeItem('series_' + name);
       }
     });
+    localStorage.removeItem('series_' + NET_WORTH_SERIES);
     saveSeriesList([DOW_SERIES]);
     populateSeriesDropdown(DOW_SERIES);
     render();
@@ -588,6 +1687,19 @@ document.getElementById('clear-data-btn').addEventListener('click', () => {
 document.getElementById('print-menu').addEventListener('click', function(e) {
   e.preventDefault();
   window.print();
+});
+
+document.getElementById('brightness').addEventListener('input', (event) => {
+  setPageTheme(event.target.value);
+});
+setPageTheme(document.documentElement.getAttribute('data-theme') || '3');
+window.addEventListener('beforeprint', () => {
+  printingCharts = true;
+  applyChartChrome();
+});
+window.addEventListener('afterprint', () => {
+  printingCharts = false;
+  applyChartChrome();
 });
   </script>
 
