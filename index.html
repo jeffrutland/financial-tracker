@@ -1225,7 +1225,9 @@ function createSeriesChart(parent, name, colorIndex, valueMap, dateList, draggab
   if (name !== NET_WORTH_SERIES) {
     const countNote = document.createElement('p');
     countNote.className = 'chart-card-count';
-    countNote.textContent = pointCountLabel(pointsOnTimeline(valueMap, dateList), historyPointCount(name)) + ' · ' + seriesDateRangeLabel(name);
+    const countLabel = pointCountLabel(pointsOnTimeline(valueMap, dateList), historyPointCount(name));
+    const rangeLabel = seriesDateRangeLabel(name);
+    countNote.textContent = rangeLabel ? `${countLabel} · ${rangeLabel}` : countLabel;
     headingWrap.appendChild(countNote);
   }
   header.appendChild(headingWrap);
@@ -1310,6 +1312,8 @@ function updateStorageNote() {
 
 async function render() {
   finishChartDrag();
+  trimFutureCustomSeries();
+  setEntryDateLimit();
   updateStorageNote();
   const seriesList = normalizeSeriesList();
   const selectedSeries = document.getElementById('series').value;
@@ -1428,6 +1432,40 @@ function localDateString(d = new Date()) {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${d.getFullYear()}-${month}-${day}`;
+}
+
+// New points may be dated through today + 3. A stored custom-series point
+// more than a week ahead is removed when the charts are drawn.
+const ENTRY_AHEAD_DAYS = 3;
+const STORED_AHEAD_DAYS = 7;
+
+function shiftLocalDate(days) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return localDateString(date);
+}
+
+function setEntryDateLimit() {
+  const input = document.getElementById('date');
+  if (!input) return;
+  const limit = shiftLocalDate(ENTRY_AHEAD_DAYS);
+  input.max = limit;
+  input.setCustomValidity(input.value && input.value > limit
+    ? 'Dates more than 3 days ahead cannot be added.'
+    : '');
+}
+
+function trimFutureCustomSeries() {
+  const cutoff = shiftLocalDate(STORED_AHEAD_DAYS);
+  customSeriesNames().forEach(name => {
+    const values = getSeriesValues(name);
+    const kept = values.filter(v => {
+      if (!v || typeof v.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v.date)) return true;
+      return v.date <= cutoff;
+    });
+    if (kept.length === values.length) return;
+    saveSeriesValues(name, kept);
+  });
 }
 
 function latestStoredDate(values) {
@@ -1569,6 +1607,9 @@ async function init() {
 }
 
 // Form handler
+document.getElementById('date').addEventListener('input', setEntryDateLimit);
+setEntryDateLimit();
+
 document.getElementById('dow-form').addEventListener('submit', function(e) {
   e.preventDefault();
   const series = document.getElementById('series').value;
@@ -1576,6 +1617,10 @@ document.getElementById('dow-form').addEventListener('submit', function(e) {
   let value = parseFloat(document.getElementById('value').value);
   if (!series || series === NET_WORTH_SERIES || series === DOW_SERIES) return;
   if (!date || isNaN(value)) return;
+  if (date > shiftLocalDate(ENTRY_AHEAD_DAYS)) {
+    alert('Dates more than 3 days ahead cannot be added.');
+    return;
+  }
   // Truncate to two decimals
   value = Math.trunc(value * 100) / 100;
   let values = getSeriesValues(series);
