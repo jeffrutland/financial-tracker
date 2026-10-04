@@ -1064,6 +1064,23 @@ function pointCountLabel(shown, history) {
   return `${shownLabel} · ${historyLabel}`;
 }
 
+const SERIES_DATE_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function formatSeriesDate(iso) {
+  const month = SERIES_DATE_MONTHS[Number(iso.slice(5, 7)) - 1];
+  const day = Number(iso.slice(8, 10));
+  return `${month} ${day}, ${iso.slice(0, 4)}`;
+}
+
+// Saved points only, including dates outside the chart window. Not the shared axis.
+function seriesDateRangeLabel(name) {
+  const extent = dateExtent([getSeriesValues(name)]);
+  if (!extent) return '';
+  const start = formatSeriesDate(extent.minDate);
+  if (extent.minDate === extent.maxDate) return start;
+  return `${start} – ${formatSeriesDate(extent.maxDate)}`;
+}
+
 function pointsInRange(values) {
   return values.filter(v => (!chartFrom || v.date >= chartFrom) && (!chartTo || v.date <= chartTo));
 }
@@ -1208,7 +1225,7 @@ function createSeriesChart(parent, name, colorIndex, valueMap, dateList, draggab
   if (name !== NET_WORTH_SERIES) {
     const countNote = document.createElement('p');
     countNote.className = 'chart-card-count';
-    countNote.textContent = pointCountLabel(pointsOnTimeline(valueMap, dateList), historyPointCount(name));
+    countNote.textContent = pointCountLabel(pointsOnTimeline(valueMap, dateList), historyPointCount(name)) + ' · ' + seriesDateRangeLabel(name);
     headingWrap.appendChild(countNote);
   }
   header.appendChild(headingWrap);
