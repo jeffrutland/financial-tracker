@@ -92,6 +92,33 @@
       cursor: grabbing;
       user-select: none;
     }
+    .chart-delete {
+      appearance: none;
+      flex: 0 0 auto;
+      margin-left: auto;
+      width: 40px;
+      height: 40px;
+      margin-top: 0;
+      margin-right: 0;
+      margin-bottom: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: rgba(0, 0, 0, 0.54);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .chart-delete:hover {
+      background: rgba(220, 53, 69, 0.1);
+      color: #b02a37;
+    }
+    .chart-delete:focus-visible {
+      outline: 2px solid #1a73e8;
+      outline-offset: 2px;
+    }
     .chart-card-placeholder {
       box-sizing: border-box;
       border: 2px dashed rgba(0, 0, 0, 0.2);
@@ -640,6 +667,13 @@ function bindChartDrag(chartsContainer) {
   chartsContainer.addEventListener('pointerdown', onChartPointerDown);
   chartsContainer.addEventListener('keydown', onChartKeyDown);
   chartsContainer.addEventListener('click', (e) => {
+    const removeBtn = e.target.closest('.chart-delete');
+    if (removeBtn && chartsContainer.contains(removeBtn)) {
+      e.preventDefault();
+      const card = removeBtn.closest('.chart-card');
+      if (card) removeEmptySeries(card.dataset.series);
+      return;
+    }
     const toggle = e.target.closest('.series-group-toggle');
     if (!toggle || !chartsContainer.contains(toggle)) return;
     const group = toggle.closest('.series-group');
@@ -654,6 +688,16 @@ function bindChartDrag(chartsContainer) {
       try { chart.resize(); } catch (err) {}
     });
   });
+}
+
+function removeEmptySeries(name) {
+  if (!name || name === DOW_SERIES || name === NET_WORTH_SERIES) return;
+  if (getSeriesValues(name).length) return;
+  if (!confirm(`Remove "${name}"? This empty series will be deleted.`)) return;
+  saveSeriesList(normalizeSeriesList().filter(item => item !== name));
+  localStorage.removeItem('series_' + name);
+  populateSeriesDropdown(document.getElementById('series').value);
+  render();
 }
 
 function pointsInRange(values) {
@@ -690,6 +734,7 @@ function calculateNetWorth(dateList) {
 }
 
 function createSeriesChart(parent, name, colorIndex, valueMap, dateList, draggable) {
+  const grouped = parent.classList.contains('series-group-body');
   const wrapper = document.createElement('div');
   wrapper.className = 'chart-card';
   wrapper.dataset.series = name;
@@ -710,9 +755,17 @@ function createSeriesChart(parent, name, colorIndex, valueMap, dateList, draggab
   heading.className = 'chart-card-title';
   heading.textContent = name;
   header.appendChild(heading);
+  if (grouped && !getSeriesValues(name).length) {
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'chart-delete no-print';
+    removeBtn.setAttribute('aria-label', `Remove ${name}`);
+    removeBtn.title = 'Remove series';
+    removeBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M7 7l1 13h8l1-13"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+    header.appendChild(removeBtn);
+  }
   wrapper.appendChild(header);
 
-  const grouped = parent.classList.contains('series-group-body');
   const canvas = document.createElement('canvas');
   canvas.height = 150;
   canvas.style.width = '100%';
