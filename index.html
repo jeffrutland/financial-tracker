@@ -52,6 +52,10 @@
       gap: 4px;
       margin-bottom: 4px;
     }
+    .chart-card-heading {
+      min-width: 0;
+      flex: 1;
+    }
     .chart-card-title {
       margin: 0;
       min-width: 0;
@@ -62,6 +66,13 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    .chart-card-count {
+      margin: 0;
+      color: rgba(0, 0, 0, 0.54);
+      font-size: 0.75rem;
+      font-weight: 400;
+      line-height: 1.2;
     }
     .chart-drag-handle {
       appearance: none;
@@ -700,6 +711,33 @@ function removeEmptySeries(name) {
   render();
 }
 
+function datesFrom(start, end) {
+  const dates = [];
+  let d = new Date(start);
+  const endDate = new Date(end);
+  while (d <= endDate) {
+    dates.push(d.toISOString().slice(0, 10));
+    d.setDate(d.getDate() + 1);
+  }
+  return dates;
+}
+
+function pointsOnTimeline(valueMap, dateList) {
+  return dateList.reduce((count, date) => {
+    return count + (Object.prototype.hasOwnProperty.call(valueMap, date) && valueMap[date] != null ? 1 : 0);
+  }, 0);
+}
+
+function historyPointCount(name) {
+  return getSeriesValues(name).length;
+}
+
+function pointCountLabel(shown, history) {
+  const shownLabel = shown === 1 ? '1 shown' : `${shown} shown`;
+  const historyLabel = history === 1 ? '1 in history' : `${history} in history`;
+  return `${shownLabel} · ${historyLabel}`;
+}
+
 function pointsInRange(values) {
   return values.filter(v => (!chartFrom || v.date >= chartFrom) && (!chartTo || v.date <= chartTo));
 }
@@ -751,10 +789,19 @@ function createSeriesChart(parent, name, colorIndex, valueMap, dateList, draggab
     handle.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
     header.appendChild(handle);
   }
+  const headingWrap = document.createElement('div');
+  headingWrap.className = 'chart-card-heading';
   const heading = document.createElement('h2');
   heading.className = 'chart-card-title';
   heading.textContent = name;
-  header.appendChild(heading);
+  headingWrap.appendChild(heading);
+  if (name !== NET_WORTH_SERIES) {
+    const countNote = document.createElement('p');
+    countNote.className = 'chart-card-count';
+    countNote.textContent = pointCountLabel(pointsOnTimeline(valueMap, dateList), historyPointCount(name));
+    headingWrap.appendChild(countNote);
+  }
+  header.appendChild(headingWrap);
   if (grouped && !getSeriesValues(name).length) {
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
@@ -833,18 +880,7 @@ async function render() {
   const minDate = dowValues[0].date;
   const maxDate = dowValues[dowValues.length - 1].date;
 
-  // Build a list of all dates in the global range (inclusive)
-  function getDateList(start, end) {
-    const dates = [];
-    let d = new Date(start);
-    const endDate = new Date(end);
-    while (d <= endDate) {
-      dates.push(d.toISOString().slice(0, 10));
-      d.setDate(d.getDate() + 1);
-    }
-    return dates;
-  }
-  const dateList = getDateList(minDate, maxDate);
+  const dateList = datesFrom(minDate, maxDate);
 
   // Destroy previous chart instances if any
   if (window.chartInstances) {
