@@ -240,6 +240,26 @@
       outline: 2px solid #1a73e8;
       outline-offset: 2px;
     }
+    #chart-range-controls {
+      flex: 0 1 auto;
+      min-width: 0;
+      max-width: 100%;
+    }
+    #chart-range-controls .range-fields {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      max-width: 100%;
+    }
+    #chart-range-controls .form-control {
+      width: auto;
+      max-width: 100%;
+    }
+    #chart-range-controls .form-label {
+      text-align: right;
+    }
     @media (max-width: 640px) {
       .page-header {
         display: flex;
@@ -488,26 +508,34 @@
         </svg>
       </div>
     </div>
-    <form id="dow-form" class="row g-3 align-items-end mb-4 no-print">
-      <div class="col-auto">
+    <form id="dow-form" class="row g-3 align-items-end mb-4">
+      <div class="col-auto no-print">
         <button type="button" class="btn btn-outline-secondary" id="add-series-btn">+ New Series</button>
       </div>
-      <div class="col-auto">
+      <div class="col-auto no-print">
         <label for="series" class="form-label">Series Name</label>
         <select id="series" class="form-select"></select>
       </div>
-      <div class="col-auto">
+      <div class="col-auto no-print">
         <label for="date" class="form-label">Date</label>
         <input type="date" id="date" class="form-control" required>
       </div>
-      <div class="col-auto">
+      <div class="col-auto no-print">
         <label for="value" class="form-label">Daily Closing Value</label>
         <input type="number" id="value" class="form-control" step="0.01" required>
       </div>
-      <div class="col-auto">
+      <div class="col-auto no-print">
         <button type="submit" class="btn btn-primary">Add Value</button>
       </div>
-      <div class="col-auto ms-auto no-print">
+      <div class="col-auto ms-auto" id="chart-range-controls">
+        <div class="range-fields" role="group" aria-labelledby="chart-range-label">
+          <input type="date" id="chart-from" class="form-control" aria-label="From">
+          <span class="range-sep" aria-hidden="true">–</span>
+          <input type="date" id="chart-to" class="form-control" aria-label="To">
+          <button type="button" class="btn btn-outline-secondary" id="chart-range-apply">Apply</button>
+        </div>
+      </div>
+      <div class="col-auto no-print">
         <div class="btn-group">
           <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
             Data
@@ -533,14 +561,6 @@
         </div>
       </div>
     </form>
-
-    <div class="mb-3 d-flex justify-content-center align-items-center" id="chart-range-controls">
-      <label for="chart-from" class="me-2 mb-0">Display data from</label>
-      <input type="date" id="chart-from" class="form-control mx-2" style="width:auto;">
-      <label for="chart-to" class="me-2 mb-0">to</label>
-      <input type="date" id="chart-to" class="form-control mx-2" style="width:auto;">
-      <button type="button" class="btn btn-primary ms-2" id="chart-range-apply">Apply</button>
-    </div>
 
   <!-- Earliest Date Modal -->
 <div class="modal fade" id="earliestDateModal" tabindex="-1" aria-labelledby="earliestDateLabel" aria-hidden="true">
@@ -717,12 +737,22 @@ function getDateRangePersist() {
   return null;
 }
 
+function writeChartRangeInputs(from, to) {
+  const fromEl = document.getElementById('chart-from');
+  const toEl = document.getElementById('chart-to');
+  fromEl.value = from;
+  toEl.value = to;
+  // defaultValue is what a form reset restores. Keep it on the display range
+  // so adding a series value cannot replace these fields.
+  fromEl.defaultValue = from;
+  toEl.defaultValue = to;
+}
+
 // Set default date range: from = 2 months ago, to = today, unless persisted
 function setDefaultChartRange() {
   const persisted = getDateRangePersist();
   if (persisted && persisted.from && persisted.to) {
-    document.getElementById('chart-from').value = persisted.from;
-    document.getElementById('chart-to').value = persisted.to;
+    writeChartRangeInputs(persisted.from, persisted.to);
     chartFrom = persisted.from;
     chartTo = persisted.to;
   } else {
@@ -731,8 +761,7 @@ function setDefaultChartRange() {
     const fromDate = new Date(today);
     fromDate.setMonth(fromDate.getMonth() - 2);
     const from = fromDate.toISOString().slice(0, 10);
-    document.getElementById('chart-from').value = from;
-    document.getElementById('chart-to').value = to;
+    writeChartRangeInputs(from, to);
     chartFrom = from;
     chartTo = to;
   }
@@ -742,6 +771,7 @@ function setDefaultChartRange() {
 document.getElementById('chart-range-apply').addEventListener('click', () => {
   chartFrom = document.getElementById('chart-from').value;
   chartTo = document.getElementById('chart-to').value;
+  writeChartRangeInputs(chartFrom, chartTo);
   setDateRangePersist(chartFrom, chartTo);
   render();
 });
@@ -1262,8 +1292,8 @@ async function render() {
   if (!chartsContainer) {
     chartsContainer = document.createElement('div');
     chartsContainer.id = 'charts-container';
-    document.querySelector('.container').insertBefore(chartsContainer, document.getElementById('chart-range-controls'));
   }
+  document.getElementById('dow-form').insertAdjacentElement('afterend', chartsContainer);
   chartsContainer.className = 'chart-stack mb-4';
   chartsContainer.setAttribute('role', 'list');
   chartsContainer.setAttribute('aria-label', 'Charts');
@@ -1471,8 +1501,11 @@ document.getElementById('dow-form').addEventListener('submit', function(e) {
   values = values.filter(v => v.date !== date);
   values.push({ date, value });
   saveSeriesValues(series, values);
+  const keepFrom = document.getElementById('chart-from').value;
+  const keepTo = document.getElementById('chart-to').value;
   render();
   this.reset();
+  writeChartRangeInputs(keepFrom, keepTo);
 });
 
 // Initial load
