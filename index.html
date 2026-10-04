@@ -19,6 +19,7 @@
         break-inside: avoid;
         page-break-inside: avoid;
       }
+      .series-group-body { display: flex !important; }
     }
     .chart-stack {
       display: flex;
@@ -96,6 +97,72 @@
       border: 2px dashed rgba(0, 0, 0, 0.2);
       border-radius: 12px;
       background: rgba(0, 0, 0, 0.03);
+    }
+    .series-group-toggle {
+      appearance: none;
+      width: 100%;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin: 0;
+      padding: 12px 16px;
+      border: 0;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.12),
+        0 1px 3px rgba(0, 0, 0, 0.08);
+      color: inherit;
+      font-size: 1.125rem;
+      font-weight: 500;
+      line-height: 1.4;
+      text-align: left;
+      cursor: pointer;
+    }
+    .series-group-toggle:focus-visible {
+      outline: 2px solid #1a73e8;
+      outline-offset: 2px;
+    }
+    .series-group.is-open .series-group-toggle {
+      border-radius: 12px 12px 0 0;
+      box-shadow: none;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-bottom: 0;
+    }
+    .series-group-chevron {
+      flex: 0 0 auto;
+      margin-top: 2px;
+      transition: transform 0.2s ease;
+    }
+    .series-group.is-open .series-group-chevron {
+      transform: rotate(90deg);
+    }
+    .series-group-label {
+      min-width: 0;
+      flex: 1;
+      white-space: normal;
+    }
+    .chart-plot {
+      position: relative;
+      height: 150px;
+    }
+    .series-group-body {
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.03);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-top: 0;
+      border-radius: 0 0 12px 12px;
+    }
+    .series-group.is-open .series-group-body {
+      display: flex;
+    }
+    .series-group-empty {
+      margin: 0;
+      padding: 4px 8px;
+      color: rgba(0, 0, 0, 0.54);
     }
     #spinner {
       position: fixed;
@@ -194,10 +261,37 @@
     // --- Series Management ---
 const SERIES_LIST_KEY = 'series_list';
 const DOW_SERIES = 'Dow Jones';
+const NET_WORTH_SERIES = 'Net Worth';
+const SERIES_GROUP_OPEN_KEY = 'series_group_open';
 
 // Get all series names
 function getSeriesList() {
   return JSON.parse(localStorage.getItem(SERIES_LIST_KEY) || `["${DOW_SERIES}"]`);
+}
+
+// Dow first, then custom series. Net Worth is calculated, so it is not stored.
+function normalizeSeriesList() {
+  const raw = getSeriesList();
+  const custom = [];
+  raw.forEach(name => {
+    if (!name || name === DOW_SERIES || name === NET_WORTH_SERIES) return;
+    if (!custom.includes(name)) custom.push(name);
+  });
+  const next = [DOW_SERIES, ...custom];
+  if (raw.length !== next.length || raw.some((name, i) => name !== next[i])) saveSeriesList(next);
+  return next;
+}
+
+function customSeriesNames() {
+  return normalizeSeriesList().filter(name => name !== DOW_SERIES);
+}
+
+function isSeriesGroupOpen() {
+  return localStorage.getItem(SERIES_GROUP_OPEN_KEY) !== 'false';
+}
+
+function setSeriesGroupOpen(open) {
+  localStorage.setItem(SERIES_GROUP_OPEN_KEY, open ? 'true' : 'false');
 }
 
 // Save all series names
@@ -219,7 +313,7 @@ function saveSeriesValues(series, values) {
 
 // Populate series dropdown
 function populateSeriesDropdown(selected) {
-  const list = getSeriesList().filter(name => name !== DOW_SERIES); // Exclude Dow Jones
+  const list = customSeriesNames();
   const sel = document.getElementById('series');
   sel.innerHTML = '';
   list.forEach(name => {
@@ -237,7 +331,13 @@ document.getElementById('add-series-btn').addEventListener('click', () => {
   if (!name) return;
   name = name.trim();
   if (!name) return;
-  const list = getSeriesList();
+  if (name === NET_WORTH_SERIES || name === DOW_SERIES) {
+    alert(name === NET_WORTH_SERIES
+      ? 'Net Worth is calculated from your other series.'
+      : 'Dow Jones is already tracked.');
+    return;
+  }
+  const list = normalizeSeriesList();
   if (list.includes(name)) {
     alert('A series with this name already exists.');
     return;
@@ -259,6 +359,7 @@ function updateFormState() {
 }
 
 // Call after populating dropdown and on change
+normalizeSeriesList();
 populateSeriesDropdown();
 updateFormState();
 
@@ -361,15 +462,16 @@ function getColor(idx) {
 let chartDrag = null;
 
 function commitChartOrder() {
-  const chartsContainer = document.getElementById('charts-container');
-  if (!chartsContainer) return;
-  const cards = [...chartsContainer.querySelectorAll('.chart-card')];
-  if (!cards.length) return;
-  const order = cards.map(card => card.dataset.series);
-  saveSeriesList(order);
+  const body = document.querySelector('.series-group-body');
+  if (!body) return;
+  const names = [...body.querySelectorAll(':scope > .chart-card')].map(card => card.dataset.series);
+  saveSeriesList([DOW_SERIES, ...names]);
+  const groupLabel = document.querySelector('.series-group-label');
+  if (groupLabel) groupLabel.textContent = names.length ? names.join(', ') : 'Series';
   populateSeriesDropdown(document.getElementById('series').value);
-  order.forEach((name, idx) => {
-    const chart = window.chartInstances && window.chartInstances[name];
+  const visual = [...document.querySelectorAll('#charts-container .chart-card')];
+  visual.forEach((card, idx) => {
+    const chart = window.chartInstances && window.chartInstances[card.dataset.series];
     if (!chart) return;
     const color = getColor(idx);
     chart.data.datasets[0].borderColor = color;
@@ -537,11 +639,132 @@ function bindChartDrag(chartsContainer) {
   chartsContainer.dataset.dragBound = '1';
   chartsContainer.addEventListener('pointerdown', onChartPointerDown);
   chartsContainer.addEventListener('keydown', onChartKeyDown);
+  chartsContainer.addEventListener('click', (e) => {
+    const toggle = e.target.closest('.series-group-toggle');
+    if (!toggle || !chartsContainer.contains(toggle)) return;
+    const group = toggle.closest('.series-group');
+    const open = !group.classList.contains('is-open');
+    group.classList.toggle('is-open', open);
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    setSeriesGroupOpen(open);
+    if (!open) return;
+    group.querySelectorAll('.chart-card').forEach(card => {
+      const chart = window.chartInstances && window.chartInstances[card.dataset.series];
+      if (!chart) return;
+      try { chart.resize(); } catch (err) {}
+    });
+  });
+}
+
+function pointsInRange(values) {
+  return values.filter(v => (!chartFrom || v.date >= chartFrom) && (!chartTo || v.date <= chartTo));
+}
+
+function valueMapFrom(values) {
+  const map = {};
+  pointsInRange(values).forEach(v => { map[v.date] = v.value; });
+  return map;
+}
+
+// Last closing value of each series carries forward, then those values are added.
+// The Dow is not included. A series counts only after its first point.
+function calculateNetWorth(dateList) {
+  const carried = customSeriesNames().map(name => {
+    const sorted = getSeriesValues(name).slice().sort((a, b) => a.date.localeCompare(b.date));
+    return { sorted, index: 0, last: null };
+  });
+  const map = {};
+  dateList.forEach(date => {
+    let sum = null;
+    carried.forEach(series => {
+      while (series.index < series.sorted.length && series.sorted[series.index].date <= date) {
+        series.last = series.sorted[series.index].value;
+        series.index += 1;
+      }
+      if (series.last == null) return;
+      sum = (sum == null ? 0 : sum) + series.last;
+    });
+    map[date] = sum == null ? null : Math.round(sum * 100) / 100;
+  });
+  return map;
+}
+
+function createSeriesChart(parent, name, colorIndex, valueMap, dateList, draggable) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'chart-card';
+  wrapper.dataset.series = name;
+  wrapper.setAttribute('role', 'listitem');
+
+  const header = document.createElement('div');
+  header.className = 'chart-card-header';
+  if (draggable) {
+    const handle = document.createElement('button');
+    handle.type = 'button';
+    handle.className = 'chart-drag-handle no-print';
+    handle.setAttribute('aria-label', `Drag to reorder ${name}`);
+    handle.title = 'Drag to reorder';
+    handle.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
+    header.appendChild(handle);
+  }
+  const heading = document.createElement('h2');
+  heading.className = 'chart-card-title';
+  heading.textContent = name;
+  header.appendChild(heading);
+  wrapper.appendChild(header);
+
+  const grouped = parent.classList.contains('series-group-body');
+  const canvas = document.createElement('canvas');
+  canvas.height = 150;
+  canvas.style.width = '100%';
+  if (grouped) {
+    const plot = document.createElement('div');
+    plot.className = 'chart-plot';
+    plot.appendChild(canvas);
+    wrapper.appendChild(plot);
+  } else {
+    wrapper.appendChild(canvas);
+  }
+  parent.appendChild(wrapper);
+
+  const points = dateList.map(date => ({
+    x: date,
+    y: Object.prototype.hasOwnProperty.call(valueMap, date) ? valueMap[date] : null
+  }));
+  const color = getColor(colorIndex);
+  window.chartInstances[name] = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      datasets: [{
+        label: name,
+        data: points,
+        borderColor: color,
+        backgroundColor: color.replace('1)', '0.1)'),
+        fill: true,
+        tension: 0.2,
+        spanGaps: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: !grouped,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          title: { display: true, text: 'Date' },
+          type: 'time',
+          time: { unit: 'day' },
+          min: dateList[0],
+          max: dateList[dateList.length - 1]
+        },
+        y: { title: { display: true, text: 'Value' } }
+      }
+    }
+  });
 }
 
 async function render() {
   finishChartDrag();
-  const seriesList = getSeriesList();
+  const seriesList = normalizeSeriesList();
   const selectedSeries = document.getElementById('series').value;
   updateFormState();
 
@@ -591,79 +814,56 @@ async function render() {
   bindChartDrag(chartsContainer);
   chartsContainer.innerHTML = '';
 
-  // Render each series in its own chart, synchronizing dates
-  seriesList.forEach((name, idx) => {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'chart-card';
-    wrapper.dataset.series = name;
-    wrapper.setAttribute('role', 'listitem');
+  const customNames = seriesList.filter(name => name !== DOW_SERIES && name !== NET_WORTH_SERIES);
+  let colorIndex = 0;
 
-    const header = document.createElement('div');
-    header.className = 'chart-card-header';
+  createSeriesChart(
+    chartsContainer,
+    DOW_SERIES,
+    colorIndex++,
+    valueMapFrom(getSeriesValues(DOW_SERIES)),
+    dateList,
+    false
+  );
 
-    const handle = document.createElement('button');
-    handle.type = 'button';
-    handle.className = 'chart-drag-handle no-print';
-    handle.setAttribute('aria-label', `Drag to reorder ${name}`);
-    handle.title = 'Drag to reorder';
-    handle.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
-    header.appendChild(handle);
+  const group = document.createElement('section');
+  group.className = 'series-group' + (isSeriesGroupOpen() ? ' is-open' : '');
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'series-group-toggle';
+  toggle.setAttribute('aria-expanded', group.classList.contains('is-open') ? 'true' : 'false');
+  toggle.setAttribute('aria-controls', 'series-group-body');
+  toggle.innerHTML = '<svg class="series-group-chevron" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>';
+  const groupLabel = document.createElement('span');
+  groupLabel.className = 'series-group-label';
+  groupLabel.textContent = customNames.length ? customNames.join(', ') : 'Series';
+  toggle.appendChild(groupLabel);
+  group.appendChild(toggle);
 
-    const heading = document.createElement('h2');
-    heading.className = 'chart-card-title';
-    heading.textContent = name;
-    header.appendChild(heading);
-    wrapper.appendChild(header);
-
-    const canvas = document.createElement('canvas');
-    canvas.height = 150; // optionally reduce chart height for more charts per page
-    canvas.style.width = '100%';
-    wrapper.appendChild(canvas);
-
-    chartsContainer.appendChild(wrapper);
-
-    // Prepare data: fill missing dates with null
-    const valueMap = {};
-    getSeriesValues(name)
-      .filter(v => (!chartFrom || v.date >= chartFrom) && (!chartTo || v.date <= chartTo))
-      .forEach(v => { valueMap[v.date] = v.value; });
-
-    const data = dateList.map(date => ({
-      x: date,
-      y: valueMap.hasOwnProperty(date) ? valueMap[date] : null
-    }));
-
-    window.chartInstances[name] = new Chart(canvas.getContext('2d'), {
-      type: 'line',
-      data: {
-        datasets: [{
-          label: name,
-          data,
-          borderColor: getColor(idx),
-          backgroundColor: getColor(idx).replace('1)', '0.1)'),
-          fill: true,
-          tension: 0.2,
-          spanGaps: true
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { display: false }
-        },
-        scales: {
-          x: {
-            title: { display: true, text: 'Date' },
-            type: 'time',
-            time: { unit: 'day' },
-            min: minDate,
-            max: maxDate
-          },
-          y: { title: { display: true, text: 'Value' } }
-        }
-      }
-    });
+  const groupBody = document.createElement('div');
+  groupBody.id = 'series-group-body';
+  groupBody.className = 'series-group-body';
+  groupBody.setAttribute('role', 'list');
+  if (!customNames.length) {
+    const empty = document.createElement('p');
+    empty.className = 'series-group-empty';
+    empty.textContent = 'No series yet. Use + New Series to add one.';
+    groupBody.appendChild(empty);
+  }
+  customNames.forEach(name => {
+    createSeriesChart(groupBody, name, colorIndex++, valueMapFrom(getSeriesValues(name)), dateList, true);
   });
+  group.appendChild(groupBody);
+  chartsContainer.appendChild(group);
+
+  createSeriesChart(
+    chartsContainer,
+    NET_WORTH_SERIES,
+    colorIndex,
+    calculateNetWorth(dateList),
+    dateList,
+    false
+  );
 }
 
 // Show/hide spinner
@@ -747,6 +947,7 @@ document.getElementById('dow-form').addEventListener('submit', function(e) {
   const series = document.getElementById('series').value;
   const date = document.getElementById('date').value;
   let value = parseFloat(document.getElementById('value').value);
+  if (!series || series === NET_WORTH_SERIES || series === DOW_SERIES) return;
   if (!date || isNaN(value)) return;
   // Truncate to two decimals
   value = Math.trunc(value * 100) / 100;
@@ -825,8 +1026,8 @@ document.getElementById('upload-json-input').addEventListener('change', function
         throw new Error();
       }
 
-      // Overwrite all series data
-      const seriesNames = Object.keys(data);
+      // Overwrite all series data. Net Worth is calculated, so a stored copy is skipped.
+      const seriesNames = Object.keys(data).filter(name => name !== NET_WORTH_SERIES);
       saveSeriesList(seriesNames);
       seriesNames.forEach(name => {
         // Truncate all imported values to two decimals
@@ -836,7 +1037,8 @@ document.getElementById('upload-json-input').addEventListener('change', function
         }));
         saveSeriesValues(name, fixed);
       });
-      populateSeriesDropdown(seriesNames[0]);
+      normalizeSeriesList();
+      populateSeriesDropdown(seriesNames.find(name => name !== DOW_SERIES));
       render();
       alert('Data imported successfully!');
     } catch {
@@ -859,6 +1061,7 @@ document.getElementById('clear-data-btn').addEventListener('click', () => {
         localStorage.removeItem('series_' + name);
       }
     });
+    localStorage.removeItem('series_' + NET_WORTH_SERIES);
     saveSeriesList([DOW_SERIES]);
     populateSeriesDropdown(DOW_SERIES);
     render();
